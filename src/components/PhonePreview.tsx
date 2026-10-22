@@ -58,33 +58,33 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   const getAspectRatioClasses = () => {
     switch (project.aspectRatio) {
       case '9:16':
-        return 'h-[440px] sm:h-[480px] md:h-[510px] aspect-[9/16] max-h-[62vh] max-w-[90vw]';
+        return 'h-[min(480px,calc(100vh-270px))] aspect-[9/16] max-w-[85vw]';
       case '1:1':
-        return 'h-[360px] sm:h-[400px] md:h-[440px] aspect-square max-h-[62vh] max-w-[90vw]';
+        return 'h-[min(420px,calc(100vh-270px))] aspect-square max-w-[85vw]';
       case '16:9':
-        return 'w-[480px] sm:w-[580px] md:w-[640px] aspect-video max-h-[62vh] max-w-[90vw]';
+        return 'w-[min(640px,calc(100vw-360px))] aspect-video max-h-[calc(100vh-270px)]';
     }
   };
 
   return (
-    <div className="flex-1 min-h-0 bg-[#0A0D14] overflow-y-auto select-none relative scrollbar-thin">
+    <div className="flex-1 w-full h-full min-h-0 bg-[#0A0D14] flex flex-col items-center justify-center p-2 relative select-none overflow-hidden">
       {/* Background ambient lighting */}
-      <div className="absolute w-[450px] h-[450px] rounded-full bg-pink-500/10 blur-[130px] pointer-events-none -top-16 left-1/4" />
-      <div className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[130px] pointer-events-none -bottom-16 right-1/4" />
+      <div className="absolute w-[450px] h-[450px] rounded-full bg-pink-500/10 blur-[130px] pointer-events-none -top-16 left-1/3" />
+      <div className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[130px] pointer-events-none -bottom-16 right-1/3" />
 
-      {/* Centering wrapper */}
-      <div className="min-h-full w-full flex flex-col items-center justify-center p-4">
+      {/* Centered Phone Device Container */}
+      <div className="flex flex-col items-center justify-center max-h-full">
         {/* Smartphone Device Frame */}
         <div className="relative group flex items-center justify-center shrink-0">
           <div
-            className={`relative ${getAspectRatioClasses()} rounded-[40px] p-2.5 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-2xl shadow-black/90 border border-slate-700/60 flex flex-col transition-all duration-200`}
+            className={`relative ${getAspectRatioClasses()} rounded-[36px] p-2 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-2xl shadow-black/90 border border-slate-700/60 flex flex-col transition-all duration-200`}
           >
             {/* Inner bezel */}
-            <div className="relative w-full h-full rounded-[30px] overflow-hidden bg-black flex items-center justify-center border border-black shadow-inner">
+            <div className="relative w-full h-full rounded-[28px] overflow-hidden bg-black flex items-center justify-center border border-black shadow-inner">
               {/* Dynamic Island / Camera Notch */}
               {project.aspectRatio === '9:16' && (
-                <div className="absolute top-2.5 z-20 flex items-center justify-center">
-                  <div className="h-4 w-20 bg-black/90 border border-slate-800 rounded-full flex items-center justify-between px-2 shadow">
+                <div className="absolute top-2 z-20 flex items-center justify-center">
+                  <div className="h-3.5 w-16 bg-black/90 border border-slate-800 rounded-full flex items-center justify-between px-1.5 shadow">
                     <div className="w-1.5 h-1.5 rounded-full bg-slate-900 border border-slate-700" />
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-950/80" />
                   </div>
@@ -109,26 +109,26 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     e.stopPropagation();
                     onTogglePlay();
                   }}
-                  className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/30 flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition pointer-events-auto"
+                  className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/30 flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition pointer-events-auto"
                 >
                   {isPlaying ? (
-                    <Pause className="w-6 h-6 fill-white" />
+                    <Pause className="w-5 h-5 fill-white" />
                   ) : (
-                    <Play className="w-6 h-6 fill-white ml-0.5" />
+                    <Play className="w-5 h-5 fill-white ml-0.5" />
                   )}
                 </button>
               </div>
 
               {/* Social Reel UI Mockup Overlay */}
               {project.aspectRatio === '9:16' && (
-                <div className="absolute right-3 bottom-12 flex flex-col items-center gap-3 z-10 pointer-events-none opacity-80">
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-xs font-bold shadow">
+                <div className="absolute right-2.5 bottom-10 flex flex-col items-center gap-2.5 z-10 pointer-events-none opacity-80">
+                  <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
                     ❤️
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-xs font-bold shadow">
+                  <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
                     💬
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-xs font-bold shadow">
+                  <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
                     ↗️
                   </div>
                 </div>
@@ -138,59 +138,59 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
         </div>
 
         {/* Transport Bar Controls below Phone */}
-        <div className="mt-3 flex items-center gap-4 bg-slate-900/90 border border-slate-800 px-4 py-1.5 rounded-2xl backdrop-blur-md shadow-lg z-20 shrink-0">
+        <div className="mt-2 flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-xl backdrop-blur-md shadow-lg z-20 shrink-0">
           <button
             onClick={() => onSeek(0)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
             title="Rewind to start"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3 h-3" />
           </button>
 
           <button
             onClick={onTogglePlay}
-            className="w-7 h-7 rounded-full bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center shadow-md shadow-pink-500/30 transition active:scale-95"
+            className="w-6 h-6 rounded-full bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center shadow-md shadow-pink-500/30 transition active:scale-95"
           >
             {isPlaying ? (
-              <Pause className="w-3.5 h-3.5 fill-white" />
+              <Pause className="w-3 h-3 fill-white" />
             ) : (
-              <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
+              <Play className="w-3 h-3 fill-white ml-0.5" />
             )}
           </button>
 
           {/* Timecode */}
-          <div className="font-mono text-xs text-slate-300 font-medium tracking-wider">
+          <div className="font-mono text-[11px] text-slate-300 font-medium tracking-wider">
             <span className="text-pink-400 font-bold">{formatTime(currentTime)}</span>
             <span className="text-slate-500"> / </span>
             <span>{formatTime(totalDuration)}</span>
           </div>
 
-          <div className="h-4 w-px bg-slate-800" />
+          <div className="h-3 w-px bg-slate-800" />
 
           {/* Mute Toggle */}
           <button
             onClick={onToggleMute}
-            className={`p-1.5 rounded-lg transition ${
+            className={`p-1 rounded transition ${
               isMuted
                 ? 'text-rose-400 hover:text-rose-300 bg-rose-500/10'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
           >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+            {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
           </button>
 
           {/* Loop Toggle */}
           <button
             onClick={onToggleLoop}
-            className={`p-1.5 rounded-lg transition ${
+            className={`p-1 rounded transition ${
               isLooping
                 ? 'text-pink-400 hover:text-pink-300 bg-pink-500/10'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
             title={isLooping ? 'Disable Loop' : 'Enable Loop'}
           >
-            <Repeat className="w-3.5 h-3.5" />
+            <Repeat className="w-3 h-3" />
           </button>
         </div>
       </div>

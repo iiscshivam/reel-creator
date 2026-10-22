@@ -7,12 +7,11 @@ import { Header } from './components/Header';
 import { MediaLibrary } from './components/MediaLibrary';
 import { PhonePreview } from './components/PhonePreview';
 import { Timeline } from './components/Timeline';
-import { BottomEditPanel } from './components/BottomEditPanel';
+import { StudioSidePanel } from './components/StudioSidePanel';
 import { ExportModal } from './components/ExportModal';
 import { AudioModal } from './components/AudioModal';
 import { OverlayModal } from './components/OverlayModal';
 import confetti from 'canvas-confetti';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [project, setProject] = useState<ReelProject>(() => getInitialProject());
@@ -25,9 +24,9 @@ export const App: React.FC = () => {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
 
-  // Layout UI states
-  const [isEditMinimized, setIsEditMinimized] = useState<boolean>(false);
-  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState<boolean>(true);
+  // Collapse / Minimize states
+  const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState<boolean>(false);
+  const [isMediaLibraryCollapsed, setIsMediaLibraryCollapsed] = useState<boolean>(false);
 
   // Modal dialog states
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
@@ -191,7 +190,7 @@ export const App: React.FC = () => {
 
     setSelectedTextId(newText.id);
     setSelectedClipId(null);
-    setIsEditMinimized(false);
+    setIsSidePanelCollapsed(false);
   };
 
   const handleAddText = () => {
@@ -213,7 +212,7 @@ export const App: React.FC = () => {
 
     setSelectedClipId(newClip.id);
     setSelectedTextId(null);
-    setIsEditMinimized(false);
+    setIsSidePanelCollapsed(false);
   };
 
   // Move clip left or right
@@ -443,32 +442,19 @@ export const App: React.FC = () => {
         totalDuration={totalDuration}
       />
 
-      {/* Main Workspace Body */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left: Collapsible Media Library & Uploads */}
-        {isMediaLibraryOpen && (
-          <MediaLibrary
-            onAddClip={handleAddClip}
-            onSetAudio={handleSetAudio}
-            onAddCaption={handleAddCaption}
-            currentAudioId={project.audioTrack?.id}
-          />
-        )}
+      {/* Main Center Area: Phone Preview Directly Visible with Full Space */}
+      <div className="flex-1 min-h-0 flex overflow-hidden relative">
+        {/* Left Side: Collapsible Media Library */}
+        <MediaLibrary
+          onAddClip={handleAddClip}
+          onSetAudio={handleSetAudio}
+          onAddCaption={handleAddCaption}
+          currentAudioId={project.audioTrack?.id}
+          isCollapsed={isMediaLibraryCollapsed}
+          onToggleCollapse={() => setIsMediaLibraryCollapsed((prev) => !prev)}
+        />
 
-        {/* Toggle Media Library Button */}
-        <button
-          onClick={() => setIsMediaLibraryOpen((prev) => !prev)}
-          className="absolute top-3 left-3 z-30 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 shadow-md backdrop-blur-md transition"
-          title={isMediaLibraryOpen ? 'Hide Media Panel' : 'Show Media Panel'}
-        >
-          {isMediaLibraryOpen ? (
-            <PanelLeftClose className="w-4 h-4" />
-          ) : (
-            <PanelLeftOpen className="w-4 h-4 text-pink-400" />
-          )}
-        </button>
-
-        {/* Center: Live Phone Preview Canvas (Centered & Scrollable) */}
+        {/* Center: Live Phone Preview Canvas (Directly Visible, Centered, No Overlaps) */}
         <PhonePreview
           project={project}
           currentTime={currentTime}
@@ -483,64 +469,69 @@ export const App: React.FC = () => {
           onSelectText={(text) => {
             setSelectedTextId(text.id);
             setSelectedClipId(null);
-            setIsEditMinimized(false);
+            setIsSidePanelCollapsed(false);
           }}
         />
       </div>
 
-      {/* Down: Edit Video Option with Minimize Button */}
-      <BottomEditPanel
-        selectedClip={selectedClip}
-        selectedText={selectedText}
-        onUpdateClip={handleUpdateClip}
-        onUpdateText={handleUpdateText}
-        onDuplicateClip={handleDuplicateClip}
-        onDeleteClip={handleDeleteClip}
-        onDeleteText={handleDeleteText}
-        onCloseSelection={() => {
-          setSelectedClipId(null);
-          setSelectedTextId(null);
-        }}
-        isMinimized={isEditMinimized}
-        onToggleMinimize={() => setIsEditMinimized((prev) => !prev)}
-        onOpenAudioModal={() => setIsAudioModalOpen(true)}
-        onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
-        onAutoSyncBeat={handleAutoSyncBeat}
-        globalOverlay={project.globalOverlay}
-        totalDuration={totalDuration}
-      />
+      {/* Bottom Deck: Timeline (Left/Main) + Video Studio Options (Down and On Side) */}
+      <div className="h-48 border-t border-slate-800 bg-[#0B0F17] flex shrink-0 z-20">
+        {/* Left/Main: Multi-Track Timeline */}
+        <div className="flex-1 h-full min-w-0">
+          <Timeline
+            clips={project.clips}
+            textOverlays={project.textOverlays}
+            audioTrack={project.audioTrack}
+            currentTime={currentTime}
+            totalDuration={totalDuration}
+            onSeek={handleSeek}
+            selectedClipId={selectedClipId}
+            onSelectClip={(id) => {
+              setSelectedClipId(id);
+              if (id) {
+                setSelectedTextId(null);
+                setIsSidePanelCollapsed(false);
+              }
+            }}
+            selectedTextId={selectedTextId}
+            onSelectText={(id) => {
+              setSelectedTextId(id);
+              if (id) {
+                setSelectedClipId(null);
+                setIsSidePanelCollapsed(false);
+              }
+            }}
+            onMoveClip={handleMoveClip}
+            onUpdateClipDuration={handleUpdateClipDuration}
+            onDeleteClip={handleDeleteClip}
+            onDeleteText={handleDeleteText}
+            onOpenAudioModal={() => setIsAudioModalOpen(true)}
+            onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
+          />
+        </div>
 
-      {/* Bottom: Multi-Track Timeline */}
-      <Timeline
-        clips={project.clips}
-        textOverlays={project.textOverlays}
-        audioTrack={project.audioTrack}
-        currentTime={currentTime}
-        totalDuration={totalDuration}
-        onSeek={handleSeek}
-        selectedClipId={selectedClipId}
-        onSelectClip={(id) => {
-          setSelectedClipId(id);
-          if (id) {
-            setSelectedTextId(null);
-            setIsEditMinimized(false);
-          }
-        }}
-        selectedTextId={selectedTextId}
-        onSelectText={(id) => {
-          setSelectedTextId(id);
-          if (id) {
+        {/* Down and On Side: Video Studio Options Bar */}
+        <StudioSidePanel
+          selectedClip={selectedClip}
+          selectedText={selectedText}
+          onUpdateClip={handleUpdateClip}
+          onUpdateText={handleUpdateText}
+          onDuplicateClip={handleDuplicateClip}
+          onDeleteClip={handleDeleteClip}
+          onDeleteText={handleDeleteText}
+          onCloseSelection={() => {
             setSelectedClipId(null);
-            setIsEditMinimized(false);
-          }
-        }}
-        onMoveClip={handleMoveClip}
-        onUpdateClipDuration={handleUpdateClipDuration}
-        onDeleteClip={handleDeleteClip}
-        onDeleteText={handleDeleteText}
-        onOpenAudioModal={() => setIsAudioModalOpen(true)}
-        onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
-      />
+            setSelectedTextId(null);
+          }}
+          isCollapsed={isSidePanelCollapsed}
+          onToggleCollapse={() => setIsSidePanelCollapsed((prev) => !prev)}
+          onOpenAudioModal={() => setIsAudioModalOpen(true)}
+          onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
+          onAutoSyncBeat={handleAutoSyncBeat}
+          globalOverlay={project.globalOverlay}
+          totalDuration={totalDuration}
+        />
+      </div>
 
       {/* Modals */}
       <ExportModal

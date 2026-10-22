@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { MediaClip, AudioTrack, TextAnimation } from '../types';
 import { SAMPLE_PHOTOS, SAMPLE_VIDEOS, VIRAL_CAPTION_HOOKS, createSynthAudioWav, generateCanvasPattern } from '../utils/sampleData';
-import { Upload, Image as ImageIcon, Video, Music, Plus, Play, Pause, Sparkles, MessageSquare } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, Music, Plus, Play, Pause, Sparkles, MessageSquare, ChevronLeft, ChevronRight, Folder } from 'lucide-react';
 
 interface MediaLibraryProps {
   onAddClip: (clip: Omit<MediaClip, 'id'>) => void;
   onSetAudio: (audio: AudioTrack) => void;
   onAddCaption?: (text: string, animation: TextAnimation) => void;
   currentAudioId?: string;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 export const MediaLibrary: React.FC<MediaLibraryProps> = ({
@@ -15,6 +17,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onSetAudio,
   onAddCaption,
   currentAudioId,
+  isCollapsed,
+  onToggleCollapse,
 }) => {
   const [activeTab, setActiveTab] = useState<'upload' | 'photos' | 'videos' | 'audio' | 'captions'>('upload');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -73,7 +77,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             duration: tempAudio.duration || 15,
             volume: 0.8,
             genre: 'Custom Audio',
-            bpm: 128,
+            bpm: 120,
           });
         };
       }
@@ -84,7 +88,6 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     }
   };
 
-  // Preview or stop audio track
   const toggleAudioPreview = (id: string, src: string) => {
     if (playingAudioId === id) {
       audioPreviewRef.current?.pause();
@@ -100,75 +103,161 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     }
   };
 
+  // COLLAPSED ICON RAIL
+  if (isCollapsed) {
+    return (
+      <div className="w-12 h-full border-r border-slate-800 bg-[#0F141F] flex flex-col items-center py-2 shrink-0 select-none z-20">
+        <button
+          onClick={onToggleCollapse}
+          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-pink-400 mb-4 transition"
+          title="Expand Media Library"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => {
+              setActiveTab('upload');
+              onToggleCollapse();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Upload Files"
+          >
+            <Upload className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('photos');
+              onToggleCollapse();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Stock Photos"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('videos');
+              onToggleCollapse();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Stock Videos"
+          >
+            <Video className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('audio');
+              onToggleCollapse();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Music / Audio"
+          >
+            <Music className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('captions');
+              onToggleCollapse();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Viral Hooks"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // EXPANDED MEDIA LIBRARY
   return (
-    <div className="w-80 border-r border-slate-800 bg-[#0F141F] flex flex-col h-full shrink-0">
-      {/* Navigation Tabs */}
-      <div className="grid grid-cols-5 p-2 gap-1 border-b border-slate-800 bg-slate-900/50">
+    <div className="w-72 h-full border-r border-slate-800 bg-[#0F141F] flex flex-col shrink-0 select-none z-20 overflow-hidden">
+      {/* Media Library Header with Integrated Collapse Button */}
+      <div className="h-8 px-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5">
+          <Folder className="w-3.5 h-3.5 text-pink-400" />
+          <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+            Media Library
+          </span>
+        </div>
+        <button
+          onClick={onToggleCollapse}
+          className="p-1 rounded text-slate-400 hover:text-pink-400 hover:bg-slate-800 transition flex items-center gap-0.5 text-[10px]"
+          title="Collapse Media Library"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="grid grid-cols-5 p-1 gap-0.5 border-b border-slate-800 bg-slate-900/40 shrink-0">
         <button
           onClick={() => setActiveTab('upload')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
+          className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
             activeTab === 'upload'
-              ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Upload className="w-3.5 h-3.5 mb-1" />
+          <Upload className="w-3 h-3 mb-0.5" />
           Upload
         </button>
         <button
           onClick={() => setActiveTab('photos')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
+          className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
             activeTab === 'photos'
-              ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <ImageIcon className="w-3.5 h-3.5 mb-1" />
+          <ImageIcon className="w-3 h-3 mb-0.5" />
           Photos
         </button>
         <button
           onClick={() => setActiveTab('videos')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
+          className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
             activeTab === 'videos'
-              ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Video className="w-3.5 h-3.5 mb-1" />
+          <Video className="w-3 h-3 mb-0.5" />
           Videos
         </button>
         <button
           onClick={() => setActiveTab('audio')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
+          className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
             activeTab === 'audio'
-              ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Music className="w-3.5 h-3.5 mb-1" />
+          <Music className="w-3 h-3 mb-0.5" />
           Music
         </button>
         <button
           onClick={() => setActiveTab('captions')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
+          className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
             activeTab === 'captions'
-              ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <MessageSquare className="w-3.5 h-3.5 mb-1" />
+          <MessageSquare className="w-3 h-3 mb-0.5" />
           Hooks
         </button>
       </div>
 
       {/* Tab Contents */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-2.5 scrollbar-thin">
         {/* TAB 1: UPLOAD */}
         {activeTab === 'upload' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-700 hover:border-pink-500/60 rounded-2xl p-6 text-center cursor-pointer bg-slate-900/30 hover:bg-pink-500/5 transition group"
+              className="border-2 border-dashed border-slate-700 hover:border-pink-500/60 rounded-xl p-4 text-center cursor-pointer bg-slate-900/30 hover:bg-pink-500/5 transition group"
             >
               <input
                 ref={fileInputRef}
@@ -178,40 +267,38 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 className="hidden"
                 onChange={handleFileUpload}
               />
-              <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 group-hover:bg-pink-500/20 text-slate-400 group-hover:text-pink-400 flex items-center justify-center mb-3 transition">
-                <Upload className="w-6 h-6" />
+              <div className="w-9 h-9 mx-auto rounded-full bg-slate-800 group-hover:bg-pink-500/20 text-slate-400 group-hover:text-pink-400 flex items-center justify-center mb-2 transition">
+                <Upload className="w-4 h-4" />
               </div>
-              <h3 className="font-semibold text-sm text-slate-200 mb-1">
+              <h3 className="font-semibold text-xs text-slate-200 mb-0.5">
                 Drop your media here
               </h3>
-              <p className="text-xs text-slate-400 mb-3">
-                Supports MP4, WEBM, MOV, JPG, PNG, MP3
+              <p className="text-[10px] text-slate-400 mb-2">
+                MP4, WEBM, MOV, JPG, PNG, MP3
               </p>
-              <span className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+              <span className="inline-block px-2.5 py-1 rounded-md text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
                 Browse Files
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 space-y-2">
-              <div className="flex items-center gap-1.5 font-semibold text-pink-400">
-                <Sparkles className="w-3.5 h-3.5" />
-                Why Creators Love This
+            <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[10px] text-slate-300 space-y-1">
+              <div className="flex items-center gap-1 font-semibold text-pink-400">
+                <Sparkles className="w-3 h-3" />
+                Tips
               </div>
-              <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400">
-                <li>Zero paywalls, zero watermarks, 100% free.</li>
-                <li>Ken Burns photo motion keeps viewers hooked.</li>
-                <li>One-click Beat Sync cuts clips to the rhythm.</li>
-              </ul>
+              <p className="text-slate-400">
+                Uploaded clips are added directly to the timeline.
+              </p>
             </div>
           </div>
         )}
 
-        {/* TAB 2: STOCK PHOTOS */}
+        {/* TAB 2: PHOTOS */}
         {activeTab === 'photos' && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Curated Presets
+              <span className="text-[10px] font-bold text-slate-400 uppercase">
+                Stock Presets
               </span>
               <button
                 onClick={() => {
@@ -220,7 +307,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                   const patternUrl = generateCanvasPattern(randomPattern);
                   onAddClip({
                     type: 'photo',
-                    title: `Generated ${randomPattern.toUpperCase()}`,
+                    title: `Gen ${randomPattern.toUpperCase()}`,
                     src: patternUrl,
                     thumbnail: patternUrl,
                     duration: 3.0,
@@ -230,14 +317,14 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     motion: 'zoom-in',
                   });
                 }}
-                className="text-[11px] text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1"
+                className="text-[10px] text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1"
               >
-                <Sparkles className="w-3 h-3" />
-                Generate New
+                <Sparkles className="w-2.5 h-2.5" />
+                New Gen
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {SAMPLE_PHOTOS.map((photo, i) => {
                 const fallbackUrl = generateCanvasPattern(photo.fallbackType);
                 return (
@@ -256,7 +343,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         motion: i % 2 === 0 ? 'zoom-in' : 'zoom-out',
                       });
                     }}
-                    className="group relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-900 border border-slate-800 cursor-pointer hover:border-pink-500 transition shadow"
+                    className="group relative aspect-[9/16] rounded-lg overflow-hidden bg-slate-900 border border-slate-800 cursor-pointer hover:border-pink-500 transition shadow"
                   >
                     <img
                       src={photo.url}
@@ -266,14 +353,13 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         (e.target as HTMLImageElement).src = fallbackUrl;
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2 opacity-90 group-hover:opacity-100">
-                      <p className="text-[11px] font-semibold text-white leading-tight">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1.5 opacity-90 group-hover:opacity-100">
+                      <p className="text-[10px] font-semibold text-white leading-tight truncate">
                         {photo.title}
                       </p>
-                      <span className="text-[9px] text-slate-300">Photo • Ken Burns</span>
                     </div>
-                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg">
-                      <Plus className="w-3.5 h-3.5" />
+                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-pink-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow">
+                      <Plus className="w-3 h-3" />
                     </div>
                   </div>
                 );
@@ -282,173 +368,125 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
           </div>
         )}
 
-        {/* TAB 3: STOCK VIDEOS */}
+        {/* TAB 3: VIDEOS */}
         {activeTab === 'videos' && (
-          <div className="space-y-3">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Free Stock Clips
-            </span>
-            <div className="space-y-2">
-              {SAMPLE_VIDEOS.map((v, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    onAddClip({
-                      type: 'video',
-                      title: v.title,
-                      src: v.url,
-                      thumbnail: v.url,
-                      duration: v.duration,
-                      transition: 'crossfade',
-                      filter: 'normal',
-                      fit: 'cover',
-                      volume: 1,
-                      speed: 1,
-                    });
-                  }}
-                  className="group relative rounded-xl p-3 bg-slate-900/80 border border-slate-800 hover:border-pink-500 cursor-pointer transition flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
-                      <Video className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-pink-400 transition">
-                        {v.title}
-                      </h4>
-                      <p className="text-[10px] text-slate-400">HD Video Loop • {v.duration}s</p>
-                    </div>
+          <div className="space-y-1.5">
+            {SAMPLE_VIDEOS.map((v, i) => (
+              <div
+                key={i}
+                onClick={() => {
+                  onAddClip({
+                    type: 'video',
+                    title: v.title,
+                    src: v.url,
+                    thumbnail: v.url,
+                    duration: v.duration,
+                    transition: 'crossfade',
+                    filter: 'normal',
+                    fit: 'cover',
+                    volume: 1,
+                    speed: 1,
+                  });
+                }}
+                className="group rounded-lg p-2 bg-slate-900 border border-slate-800 hover:border-pink-500 cursor-pointer transition flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                    <Video className="w-3.5 h-3.5" />
                   </div>
-                  <button className="p-1.5 rounded-lg bg-slate-800 text-slate-300 group-hover:bg-pink-500 group-hover:text-white transition">
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <div>
+                    <h4 className="text-[11px] font-bold text-slate-200 group-hover:text-pink-400 truncate max-w-[150px]">
+                      {v.title}
+                    </h4>
+                    <p className="text-[9px] text-slate-400">{v.duration}s Video Loop</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <Plus className="w-3.5 h-3.5 text-slate-400 group-hover:text-pink-400" />
+              </div>
+            ))}
           </div>
         )}
 
-        {/* TAB 4: AUDIO & SOUNDTRACK */}
+        {/* TAB 4: AUDIO */}
         {activeTab === 'audio' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Soundtrack & Beats
-              </span>
-              <label className="text-[11px] text-pink-400 hover:text-pink-300 font-semibold cursor-pointer flex items-center gap-1">
-                <Upload className="w-3 h-3" />
-                Upload MP3
-                <input
-                  type="file"
-                  accept="audio/*"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </div>
+          <div className="space-y-2">
+            {[
+              { id: 'synth-upbeat', title: 'Upbeat Electro Beat', bpm: 128, genre: 'Electronic', type: 'upbeat' as const },
+              { id: 'synth-lofi', title: 'Chilled Lo-Fi Sunset', bpm: 84, genre: 'Lo-Fi', type: 'lofi' as const },
+              { id: 'synth-cinematic', title: 'Cinematic Flow', bpm: 70, genre: 'Cinematic', type: 'cinematic' as const },
+            ].map((item) => {
+              const isSelected = currentAudioId === item.id;
+              const isPlaying = playingAudioId === item.id;
 
-            <div className="space-y-2">
-              {[
-                { id: 'synth-upbeat', title: 'Upbeat Electro Beat', bpm: 128, genre: 'Electronic / Dance', type: 'upbeat' as const },
-                { id: 'synth-lofi', title: 'Chilled Lo-Fi Sunset', bpm: 84, genre: 'Lo-Fi / Hip-Hop', type: 'lofi' as const },
-                { id: 'synth-cinematic', title: 'Cinematic Ambient Flow', bpm: 70, genre: 'Cinematic / Drone', type: 'cinematic' as const },
-              ].map((item) => {
-                const isSelected = currentAudioId === item.id;
-                const isPlaying = playingAudioId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className={`p-2 rounded-xl border transition flex items-center justify-between ${
+                    isSelected
+                      ? 'bg-pink-500/10 border-pink-500/60'
+                      : 'bg-slate-900 border-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <button
+                      onClick={() => {
+                        const trackSrc = createSynthAudioWav(item.type, 15);
+                        toggleAudioPreview(item.id, trackSrc);
+                      }}
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                        isPlaying ? 'bg-pink-500 text-white' : 'bg-slate-800 text-slate-300'
+                      }`}
+                    >
+                      {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+                    </button>
+                    <div className="truncate">
+                      <div className="text-[11px] font-bold text-white truncate">{item.title}</div>
+                      <div className="text-[9px] text-slate-400">{item.bpm} BPM</div>
+                    </div>
+                  </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    className={`p-3 rounded-xl border transition ${
-                      isSelected
-                        ? 'bg-pink-500/10 border-pink-500/60'
-                        : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                  <button
+                    onClick={() => {
+                      const trackSrc = createSynthAudioWav(item.type, 15);
+                      onSetAudio({
+                        id: item.id,
+                        title: item.title,
+                        src: trackSrc,
+                        duration: 15,
+                        volume: 0.8,
+                        genre: item.genre,
+                        bpm: item.bpm,
+                      });
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                      isSelected ? 'bg-pink-500 text-white' : 'bg-slate-800 text-slate-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            const trackSrc = createSynthAudioWav(item.type, 15);
-                            toggleAudioPreview(item.id, trackSrc);
-                          }}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
-                            isPlaying
-                              ? 'bg-pink-500 text-white animate-pulse'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          }`}
-                        >
-                          {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-                        </button>
-                        <div>
-                          <div className="text-xs font-bold text-slate-200">{item.title}</div>
-                          <div className="text-[10px] text-slate-400">{item.genre} • {item.bpm} BPM</div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          const trackSrc = createSynthAudioWav(item.type, 15);
-                          onSetAudio({
-                            id: item.id,
-                            title: item.title,
-                            src: trackSrc,
-                            duration: 15,
-                            volume: 0.8,
-                            genre: item.genre,
-                            bpm: item.bpm,
-                          });
-                        }}
-                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
-                          isSelected
-                            ? 'bg-pink-500 text-white'
-                            : 'bg-slate-800 hover:bg-pink-500/20 text-slate-300 hover:text-pink-300'
-                        }`}
-                      >
-                        {isSelected ? 'Active' : 'Apply'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    {isSelected ? 'Active' : 'Apply'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* TAB 5: VIRAL CAPTION HOOKS (CapCut style) */}
+        {/* TAB 5: HOOKS */}
         {activeTab === 'captions' && (
-          <div className="space-y-3">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              1-Click Viral Captions
-            </span>
-            <p className="text-[11px] text-slate-400">
-              Click any trending hook to instantly place it as an animated text card on your reel.
-            </p>
-            <div className="space-y-2">
-              {VIRAL_CAPTION_HOOKS.map((hook, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    if (onAddCaption) {
-                      onAddCaption(hook.text, hook.animation);
-                    }
-                  }}
-                  className="group p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-pink-500 cursor-pointer transition flex items-center justify-between"
-                >
-                  <div>
-                    <p className="text-xs font-bold text-slate-200 group-hover:text-pink-400 transition">
-                      {hook.text}
-                    </p>
-                    <span className="text-[10px] text-slate-400 capitalize">
-                      Anim: {hook.animation}
-                    </span>
-                  </div>
-                  <button className="p-1 rounded-lg bg-slate-800 text-slate-300 group-hover:bg-pink-500 group-hover:text-white transition">
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-1.5">
+            {VIRAL_CAPTION_HOOKS.map((hook, i) => (
+              <div
+                key={i}
+                onClick={() => {
+                  if (onAddCaption) onAddCaption(hook.text, hook.animation);
+                }}
+                className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-pink-500 cursor-pointer transition flex items-center justify-between"
+              >
+                <p className="text-[11px] font-bold text-slate-200 hover:text-pink-400 truncate">
+                  {hook.text}
+                </p>
+                <Plus className="w-3 h-3 text-slate-400 shrink-0" />
+              </div>
+            ))}
           </div>
         )}
       </div>
