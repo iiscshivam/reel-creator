@@ -1,6 +1,6 @@
 import React from 'react';
 import { AspectRatio, OverlayEffect } from '../types';
-import { Film, Download, Type, Sparkles, Smartphone, Square, Monitor, Zap, Layers } from 'lucide-react';
+import { Film, Download, Type, Sparkles, Smartphone, Square, Monitor, Zap, Layers, Music } from 'lucide-react';
 
 interface HeaderProps {
   aspectRatio: AspectRatio;
@@ -9,8 +9,9 @@ interface HeaderProps {
   onExport: () => void;
   onLoadTemplate: (templateName: string) => void;
   onAutoSyncBeat: () => void;
+  onOpenAudioModal: () => void;
+  onOpenOverlayModal: () => void;
   globalOverlay?: OverlayEffect;
-  onChangeOverlay: (overlay: OverlayEffect) => void;
   totalDuration: number;
 }
 
@@ -21,8 +22,9 @@ export const Header: React.FC<HeaderProps> = ({
   onExport,
   onLoadTemplate,
   onAutoSyncBeat,
+  onOpenAudioModal,
+  onOpenOverlayModal,
   globalOverlay = 'none',
-  onChangeOverlay,
   totalDuration,
 }) => {
   return (
@@ -42,12 +44,12 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 hidden sm:block">
-            {totalDuration.toFixed(1)}s Reel • AI Beat-Sync & Ken Burns Motion
+            {totalDuration.toFixed(1)}s Reel • Centered Phone Preview
           </p>
         </div>
       </div>
 
-      {/* Center Controls: Aspect Ratio, Beat Sync & Templates */}
+      {/* Center Controls: Aspect Ratio, Audio, Overlay, Beat Sync */}
       <div className="flex items-center gap-2">
         {/* Aspect Ratio Switcher */}
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-1 flex items-center gap-1 shadow-inner">
@@ -58,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
-            title="9:16 Vertical Reel (Instagram / TikTok / Shorts)"
+            title="9:16 Vertical Reel"
           >
             <Smartphone className="w-3.5 h-3.5" />
             <span className="hidden md:inline">9:16 Reel</span>
@@ -91,46 +93,51 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* ⚡ One-Click Auto Beat-Sync (CapCut #1 Loved Feature) */}
+        {/* Option to Add Audio */}
+        <button
+          onClick={onOpenAudioModal}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold text-pink-300 bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 flex items-center gap-1.5 transition shadow-sm active:scale-95"
+          title="Add or change background music / soundtrack"
+        >
+          <Music className="w-3.5 h-3.5 text-pink-400" />
+          <span>Add Audio</span>
+        </button>
+
+        {/* Option to Add Overlay */}
+        <button
+          onClick={onOpenOverlayModal}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 flex items-center gap-1.5 transition shadow-sm active:scale-95"
+          title="Add or change visual overlay (35mm Grain, Retro VHS, Light Leak, Viewfinder)"
+        >
+          <Layers className="w-3.5 h-3.5 text-amber-400" />
+          <span>Add Overlay</span>
+          {globalOverlay !== 'none' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          )}
+        </button>
+
+        {/* One-Click Auto Beat-Sync */}
         <button
           onClick={onAutoSyncBeat}
-          className="px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1.5 transition shadow-sm active:scale-95"
-          title="Auto-sync photos to music beat (0.47s snappy cuts)"
+          className="hidden sm:flex px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 items-center gap-1.5 transition shadow-sm active:scale-95"
+          title="Auto-sync photos to music beat"
         >
           <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
           <span className="hidden lg:inline">Beat Sync</span>
         </button>
 
-        {/* Aesthetic Film Overlay Selector (VSCO Style) */}
-        <div className="hidden xl:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs">
-          <Layers className="w-3.5 h-3.5 text-pink-400 ml-1.5" />
-          <select
-            value={globalOverlay}
-            onChange={(e) => onChangeOverlay(e.target.value as OverlayEffect)}
-            className="bg-transparent text-slate-200 py-0.5 px-1.5 rounded text-xs focus:outline-none cursor-pointer"
-          >
-            <option value="none">No Overlay</option>
-            <option value="light-leak">Golden Light Leak</option>
-            <option value="grain">35mm Film Grain</option>
-            <option value="vhs">Retro VHS 2026</option>
-            <option value="viewfinder">4K Viewfinder</option>
-          </select>
-        </div>
-
-        {/* Viral Templates Presets */}
-        <div className="hidden lg:flex items-center gap-1.5">
+        {/* Viral Templates */}
+        <div className="hidden xl:flex items-center gap-1.5">
           <button
             onClick={() => onLoadTemplate('photodump')}
-            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-pink-500/40 hover:text-pink-300 transition"
-            title="Snappy 0.5s beat cuts with Ken Burns zoom"
+            className="px-2 py-1 rounded-md text-[11px] font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-pink-500/40 hover:text-pink-300 transition"
           >
             <Sparkles className="w-3 h-3 text-pink-400 inline mr-1" />
             Photo Dump
           </button>
           <button
             onClick={() => onLoadTemplate('filmvlog')}
-            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-amber-500/40 hover:text-amber-300 transition"
-            title="35mm Film Grain, Vintage Sepia, VHS date stamp"
+            className="px-2 py-1 rounded-md text-[11px] font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-amber-500/40 hover:text-amber-300 transition"
           >
             <Sparkles className="w-3 h-3 text-amber-400 inline mr-1" />
             35mm Vlog

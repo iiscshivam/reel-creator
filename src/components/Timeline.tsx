@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { MediaClip, TextOverlay, AudioTrack } from '../types';
-import { Film, Type, Music, ChevronLeft, ChevronRight, Plus, Minus, Trash2, Sliders } from 'lucide-react';
+import { Film, Type, Music, ChevronLeft, ChevronRight, Plus, Minus, Trash2, Sliders, Layers } from 'lucide-react';
 
 interface TimelineProps {
   clips: MediaClip[];
@@ -17,6 +17,8 @@ interface TimelineProps {
   onUpdateClipDuration: (id: string, delta: number) => void;
   onDeleteClip: (id: string) => void;
   onDeleteText: (id: string) => void;
+  onOpenAudioModal?: () => void;
+  onOpenOverlayModal?: () => void;
 }
 
 export const Timeline: React.FC<TimelineProps> = ({
@@ -34,6 +36,8 @@ export const Timeline: React.FC<TimelineProps> = ({
   onUpdateClipDuration,
   onDeleteClip,
   onDeleteText,
+  onOpenAudioModal,
+  onOpenOverlayModal,
 }) => {
   const timelineRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,7 +55,6 @@ export const Timeline: React.FC<TimelineProps> = ({
     onSeek(newTime);
   };
 
-  // Generate ruler tick marks
   const rulerTicks = [];
   const maxSeconds = Math.ceil(totalDuration) + 2;
   for (let s = 0; s <= maxSeconds; s++) {
@@ -59,28 +62,50 @@ export const Timeline: React.FC<TimelineProps> = ({
   }
 
   return (
-    <div className="h-64 border-t border-slate-800 bg-[#0B0F17] flex flex-col shrink-0 select-none z-20">
+    <div className="h-60 border-t border-slate-800 bg-[#0B0F17] flex flex-col shrink-0 select-none z-20">
       {/* Timeline Action Header */}
-      <div className="h-9 px-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between text-xs text-slate-400">
-        <div className="flex items-center gap-4">
+      <div className="h-9 px-4 border-b border-slate-800 bg-slate-900/70 flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center gap-3">
           <span className="font-bold uppercase tracking-wider text-[11px] text-slate-300 flex items-center gap-1.5">
             <Sliders className="w-3.5 h-3.5 text-pink-400" />
-            Timeline Editor
+            Timeline
           </span>
           <span className="text-slate-500">•</span>
           <span>{clips.length} Clips</span>
           <span className="text-slate-500">•</span>
-          <span>{textOverlays.length} Text Overlays</span>
-          {audioTrack && (
+          <span>{textOverlays.length} Text</span>
+          {audioTrack ? (
             <>
               <span className="text-slate-500">•</span>
               <span className="text-emerald-400 font-medium">1 Soundtrack Active</span>
             </>
+          ) : (
+            <>
+              <span className="text-slate-500">•</span>
+              <span className="text-slate-500 italic">No audio track</span>
+            </>
           )}
         </div>
 
-        <div className="text-[11px] text-slate-400 flex items-center gap-2">
-          <span>Click track to scrub playhead</span>
+        <div className="flex items-center gap-2">
+          {onOpenAudioModal && (
+            <button
+              onClick={onOpenAudioModal}
+              className="text-[11px] font-semibold text-pink-400 hover:text-pink-300 flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700"
+            >
+              <Music className="w-3 h-3" />
+              {audioTrack ? 'Change Audio' : '+ Add Audio'}
+            </button>
+          )}
+          {onOpenOverlayModal && (
+            <button
+              onClick={onOpenOverlayModal}
+              className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700"
+            >
+              <Layers className="w-3 h-3" />
+              Overlays
+            </button>
+          )}
         </div>
       </div>
 
@@ -119,7 +144,7 @@ export const Timeline: React.FC<TimelineProps> = ({
           </div>
 
           {/* TRACK 1: TEXT OVERLAYS */}
-          <div className="h-9 mb-2 relative flex items-center bg-slate-900/40 rounded-lg border border-slate-800/50 px-1">
+          <div className="h-8 mb-2 relative flex items-center bg-slate-900/40 rounded-lg border border-slate-800/50 px-1">
             <div className="w-6 shrink-0 flex items-center justify-center text-slate-500">
               <Type className="w-3.5 h-3.5 text-pink-400" />
             </div>
@@ -281,22 +306,42 @@ export const Timeline: React.FC<TimelineProps> = ({
           </div>
 
           {/* TRACK 3: AUDIO SOUNDTRACK */}
-          {audioTrack && (
-            <div className="h-9 relative flex items-center bg-emerald-950/30 rounded-lg border border-emerald-800/40 px-1">
+          {audioTrack ? (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenAudioModal) onOpenAudioModal();
+              }}
+              className="h-8 relative flex items-center bg-emerald-950/30 rounded-lg border border-emerald-800/40 px-1 cursor-pointer hover:border-emerald-600 transition"
+              title="Click to edit or change audio"
+            >
               <div className="w-6 shrink-0 flex items-center justify-center text-emerald-400">
                 <Music className="w-3.5 h-3.5" />
               </div>
               <div
                 style={{ width: `${Math.min(totalDuration, audioTrack.duration) * pxPerSec}px` }}
-                className="h-7 bg-emerald-900/60 border border-emerald-600/50 rounded-md px-2 flex items-center justify-between text-xs text-emerald-200"
+                className="h-6 bg-emerald-900/60 border border-emerald-600/50 rounded-md px-2 flex items-center justify-between text-xs text-emerald-200"
               >
                 <span className="font-semibold text-[11px] truncate">
-                  {audioTrack.title}
+                  🎵 {audioTrack.title}
                 </span>
                 <span className="text-[10px] font-mono text-emerald-300">
-                  Vol: {Math.round(audioTrack.volume * 100)}%
+                  {Math.round(audioTrack.volume * 100)}%
                 </span>
               </div>
+            </div>
+          ) : (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenAudioModal) onOpenAudioModal();
+              }}
+              className="h-8 relative flex items-center bg-slate-900/40 rounded-lg border border-dashed border-slate-700/60 px-3 cursor-pointer hover:border-pink-500/60 transition"
+            >
+              <Music className="w-3.5 h-3.5 text-slate-500 mr-2" />
+              <span className="text-xs text-slate-400 hover:text-pink-400 font-medium">
+                + Click here to add an audio track or soundtrack
+              </span>
             </div>
           )}
         </div>

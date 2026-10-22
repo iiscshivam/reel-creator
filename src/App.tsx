@@ -7,9 +7,12 @@ import { Header } from './components/Header';
 import { MediaLibrary } from './components/MediaLibrary';
 import { PhonePreview } from './components/PhonePreview';
 import { Timeline } from './components/Timeline';
-import { InspectorPanel } from './components/InspectorPanel';
+import { BottomEditPanel } from './components/BottomEditPanel';
 import { ExportModal } from './components/ExportModal';
+import { AudioModal } from './components/AudioModal';
+import { OverlayModal } from './components/OverlayModal';
 import confetti from 'canvas-confetti';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [project, setProject] = useState<ReelProject>(() => getInitialProject());
@@ -22,8 +25,15 @@ export const App: React.FC = () => {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
 
-  // Export states
+  // Layout UI states
+  const [isEditMinimized, setIsEditMinimized] = useState<boolean>(false);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState<boolean>(true);
+
+  // Modal dialog states
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState<boolean>(false);
+  const [isOverlayModalOpen, setIsOverlayModalOpen] = useState<boolean>(false);
+
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
 
@@ -181,9 +191,9 @@ export const App: React.FC = () => {
 
     setSelectedTextId(newText.id);
     setSelectedClipId(null);
+    setIsEditMinimized(false);
   };
 
-  // Add text overlay
   const handleAddText = () => {
     handleAddCaption('NEW CAPTION ✨', 'pop');
   };
@@ -203,6 +213,7 @@ export const App: React.FC = () => {
 
     setSelectedClipId(newClip.id);
     setSelectedTextId(null);
+    setIsEditMinimized(false);
   };
 
   // Move clip left or right
@@ -282,10 +293,20 @@ export const App: React.FC = () => {
     setProject((prev) => ({ ...prev, audioTrack: audio }));
   };
 
+  const handleRemoveAudio = () => {
+    setProject((prev) => ({ ...prev, audioTrack: null }));
+  };
+
+  const handleUpdateAudioVolume = (vol: number) => {
+    setProject((prev) => ({
+      ...prev,
+      audioTrack: prev.audioTrack ? { ...prev.audioTrack, volume: vol } : null,
+    }));
+  };
+
   // Load preset templates
   const handleLoadTemplate = (templateName: string) => {
     if (templateName === 'photodump') {
-      // 5 fast snappy beat-synced photos (CapCut #1 style)
       const p1 = generateCanvasPattern('sunset');
       const p2 = generateCanvasPattern('cyberpunk');
       const p3 = generateCanvasPattern('nature');
@@ -322,21 +343,6 @@ export const App: React.FC = () => {
             align: 'center',
             bold: true,
           },
-          {
-            id: 'pt-2',
-            text: '2026 MEMORIES ✨',
-            startTime: 2.8,
-            duration: 1.8,
-            x: 50,
-            y: 75,
-            fontSize: 34,
-            fontFamily: 'Bebas Neue',
-            color: '#F43F5E',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            animation: 'slide-up',
-            align: 'center',
-            bold: true,
-          }
         ],
         audioTrack: {
           id: 'audio-upbeat',
@@ -349,7 +355,6 @@ export const App: React.FC = () => {
         },
       });
     } else if (templateName === 'filmvlog') {
-      // 35mm film vintage vlog with VHS stamp (VSCO aesthetic style)
       const p1 = generateCanvasPattern('sunset');
       const p2 = generateCanvasPattern('nature');
       const audio = createSynthAudioWav('lofi', 15);
@@ -389,90 +394,6 @@ export const App: React.FC = () => {
           volume: 0.8,
           genre: 'Lo-Fi',
           bpm: 84,
-        },
-      });
-    } else if (templateName === 'sunset') {
-      const img1 = generateCanvasPattern('sunset');
-      const img2 = generateCanvasPattern('nature');
-      const audio = createSynthAudioWav('lofi', 15);
-
-      setProject({
-        id: 'proj-sunset',
-        title: 'Golden Sunset Vibe',
-        aspectRatio: '9:16',
-        fps: 30,
-        globalOverlay: 'light-leak',
-        clips: [
-          { id: 's-1', type: 'photo', title: 'Golden Hour', src: img1, thumbnail: img1, duration: 4.0, transition: 'crossfade', filter: 'warm', fit: 'cover', motion: 'zoom-in' },
-          { id: 's-2', type: 'photo', title: 'Tropical Calm', src: img2, thumbnail: img2, duration: 4.0, transition: 'fade-black', filter: 'vibrant', fit: 'cover', motion: 'zoom-out' },
-        ],
-        textOverlays: [
-          {
-            id: 'st-1',
-            text: 'GOLDEN HOUR MAGIC ✨',
-            startTime: 0.5,
-            duration: 3.5,
-            x: 50,
-            y: 40,
-            fontSize: 36,
-            fontFamily: 'Outfit',
-            color: '#FFFFFF',
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            animation: 'pop',
-            align: 'center',
-            bold: true,
-          },
-        ],
-        audioTrack: {
-          id: 'audio-lofi',
-          title: 'Chilled Lo-Fi Sunset',
-          src: audio,
-          duration: 15,
-          volume: 0.85,
-          genre: 'Lo-Fi',
-          bpm: 84,
-        },
-      });
-    } else if (templateName === 'cyberpunk') {
-      const img1 = generateCanvasPattern('cyberpunk');
-      const img2 = generateCanvasPattern('urban');
-      const audio = createSynthAudioWav('upbeat', 15);
-
-      setProject({
-        id: 'proj-cyber',
-        title: 'Cyberpunk Neon',
-        aspectRatio: '9:16',
-        fps: 30,
-        globalOverlay: 'viewfinder',
-        clips: [
-          { id: 'c-1', type: 'photo', title: 'Tokyo Neon Grid', src: img1, thumbnail: img1, duration: 3.5, transition: 'zoom-in', filter: 'cyberpunk', fit: 'cover', motion: 'zoom-in' },
-          { id: 'c-2', type: 'photo', title: 'Metropolis Skyline', src: img2, thumbnail: img2, duration: 3.5, transition: 'flash', filter: 'noir', fit: 'cover', motion: 'zoom-out' },
-        ],
-        textOverlays: [
-          {
-            id: 'ct-1',
-            text: 'FUTURE CITY ⚡ 2099',
-            startTime: 0.5,
-            duration: 3.0,
-            x: 50,
-            y: 35,
-            fontSize: 38,
-            fontFamily: 'Bebas Neue',
-            color: '#38BDF8',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            animation: 'slide-up',
-            align: 'center',
-            bold: true,
-          },
-        ],
-        audioTrack: {
-          id: 'audio-cyber',
-          title: 'Upbeat Electro Beat',
-          src: audio,
-          duration: 15,
-          volume: 0.8,
-          genre: 'Electronic',
-          bpm: 128,
         },
       });
     }
@@ -516,22 +437,38 @@ export const App: React.FC = () => {
         onExport={handleExportReel}
         onLoadTemplate={handleLoadTemplate}
         onAutoSyncBeat={handleAutoSyncBeat}
+        onOpenAudioModal={() => setIsAudioModalOpen(true)}
+        onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
         globalOverlay={project.globalOverlay}
-        onChangeOverlay={handleChangeOverlay}
         totalDuration={totalDuration}
       />
 
       {/* Main Workspace Body */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Media Library & Uploads */}
-        <MediaLibrary
-          onAddClip={handleAddClip}
-          onSetAudio={handleSetAudio}
-          onAddCaption={handleAddCaption}
-          currentAudioId={project.audioTrack?.id}
-        />
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left: Collapsible Media Library & Uploads */}
+        {isMediaLibraryOpen && (
+          <MediaLibrary
+            onAddClip={handleAddClip}
+            onSetAudio={handleSetAudio}
+            onAddCaption={handleAddCaption}
+            currentAudioId={project.audioTrack?.id}
+          />
+        )}
 
-        {/* Center: Live Phone Preview Canvas */}
+        {/* Toggle Media Library Button */}
+        <button
+          onClick={() => setIsMediaLibraryOpen((prev) => !prev)}
+          className="absolute top-3 left-3 z-30 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 shadow-md backdrop-blur-md transition"
+          title={isMediaLibraryOpen ? 'Hide Media Panel' : 'Show Media Panel'}
+        >
+          {isMediaLibraryOpen ? (
+            <PanelLeftClose className="w-4 h-4" />
+          ) : (
+            <PanelLeftOpen className="w-4 h-4 text-pink-400" />
+          )}
+        </button>
+
+        {/* Center: Live Phone Preview Canvas (Centered & Scrollable) */}
         <PhonePreview
           project={project}
           currentTime={currentTime}
@@ -546,23 +483,32 @@ export const App: React.FC = () => {
           onSelectText={(text) => {
             setSelectedTextId(text.id);
             setSelectedClipId(null);
+            setIsEditMinimized(false);
           }}
         />
-
-        {/* Right: Inspector Properties Panel */}
-        <InspectorPanel
-          selectedClip={selectedClip}
-          selectedText={selectedText}
-          onUpdateClip={handleUpdateClip}
-          onUpdateText={handleUpdateText}
-          onDuplicateClip={handleDuplicateClip}
-          onDeleteClip={handleDeleteClip}
-          onDeleteText={handleDeleteText}
-          globalOverlay={project.globalOverlay}
-          onChangeOverlay={handleChangeOverlay}
-          totalDuration={totalDuration}
-        />
       </div>
+
+      {/* Down: Edit Video Option with Minimize Button */}
+      <BottomEditPanel
+        selectedClip={selectedClip}
+        selectedText={selectedText}
+        onUpdateClip={handleUpdateClip}
+        onUpdateText={handleUpdateText}
+        onDuplicateClip={handleDuplicateClip}
+        onDeleteClip={handleDeleteClip}
+        onDeleteText={handleDeleteText}
+        onCloseSelection={() => {
+          setSelectedClipId(null);
+          setSelectedTextId(null);
+        }}
+        isMinimized={isEditMinimized}
+        onToggleMinimize={() => setIsEditMinimized((prev) => !prev)}
+        onOpenAudioModal={() => setIsAudioModalOpen(true)}
+        onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
+        onAutoSyncBeat={handleAutoSyncBeat}
+        globalOverlay={project.globalOverlay}
+        totalDuration={totalDuration}
+      />
 
       {/* Bottom: Multi-Track Timeline */}
       <Timeline
@@ -575,25 +521,49 @@ export const App: React.FC = () => {
         selectedClipId={selectedClipId}
         onSelectClip={(id) => {
           setSelectedClipId(id);
-          if (id) setSelectedTextId(null);
+          if (id) {
+            setSelectedTextId(null);
+            setIsEditMinimized(false);
+          }
         }}
         selectedTextId={selectedTextId}
         onSelectText={(id) => {
           setSelectedTextId(id);
-          if (id) setSelectedClipId(null);
+          if (id) {
+            setSelectedClipId(null);
+            setIsEditMinimized(false);
+          }
         }}
         onMoveClip={handleMoveClip}
         onUpdateClipDuration={handleUpdateClipDuration}
         onDeleteClip={handleDeleteClip}
         onDeleteText={handleDeleteText}
+        onOpenAudioModal={() => setIsAudioModalOpen(true)}
+        onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
       />
 
-      {/* Export Progress / Done Modal */}
+      {/* Modals */}
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         progress={exportProgress}
         exportedBlob={exportedBlob}
+      />
+
+      <AudioModal
+        isOpen={isAudioModalOpen}
+        onClose={() => setIsAudioModalOpen(false)}
+        currentAudio={project.audioTrack}
+        onSelectAudio={handleSetAudio}
+        onRemoveAudio={handleRemoveAudio}
+        onUpdateVolume={handleUpdateAudioVolume}
+      />
+
+      <OverlayModal
+        isOpen={isOverlayModalOpen}
+        onClose={() => setIsOverlayModalOpen(false)}
+        currentOverlay={project.globalOverlay || 'none'}
+        onSelectOverlay={handleChangeOverlay}
       />
     </div>
   );
