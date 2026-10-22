@@ -1,4 +1,4 @@
-import { AspectRatio, FilterType, MediaClip, TextOverlay, TransitionType } from '../types';
+import { AspectRatio, FilterType, MediaClip, MotionEffect, OverlayEffect, TextOverlay, TransitionType } from '../types';
 
 export interface CanvasDimensions {
   width: number;
@@ -34,7 +34,6 @@ export class MediaCache {
         resolve(img);
       };
       img.onerror = () => {
-        // Fallback for broken/CORS-blocked external images: create colored fallback canvas
         const fallback = document.createElement('canvas');
         fallback.width = 720;
         fallback.height = 1280;
@@ -94,7 +93,7 @@ export function applyFilter(ctx: CanvasRenderingContext2D, filter: FilterType) {
       ctx.filter = 'grayscale(1) contrast(1.3) brightness(0.9)';
       break;
     case 'warm':
-      ctx.filter = 'sepia(0.2) saturate(1.25) hue-rotate(-10deg) brightness(1.05)';
+      ctx.filter = 'sepia(0.25) saturate(1.3) hue-rotate(-10deg) brightness(1.05)';
       break;
     case 'cyberpunk':
       ctx.filter = 'hue-rotate(290deg) contrast(1.3) saturate(1.6) brightness(1.1)';
@@ -109,7 +108,7 @@ export function applyFilter(ctx: CanvasRenderingContext2D, filter: FilterType) {
   }
 }
 
-// Draw image/video fitted to the canvas (contain vs cover)
+// Draw image/video fitted to the canvas with Ken Burns motion effect
 export function drawMediaFitted(
   ctx: CanvasRenderingContext2D,
   media: CanvasImageSource,
@@ -117,26 +116,48 @@ export function drawMediaFitted(
   sourceHeight: number,
   destWidth: number,
   destHeight: number,
-  fit: 'cover' | 'contain' = 'cover'
+  fit: 'cover' | 'contain' = 'cover',
+  motion: MotionEffect = 'none',
+  progress = 0 // 0 to 1 across clip duration
 ) {
   if (sourceWidth <= 0 || sourceHeight <= 0) return;
 
+  ctx.save();
+
   const hRatio = destWidth / sourceWidth;
   const vRatio = destHeight / sourceHeight;
-  const ratio = fit === 'cover' ? Math.max(hRatio, vRatio) : Math.min(hRatio, vRatio);
+  const baseRatio = fit === 'cover' ? Math.max(hRatio, vRatio) : Math.min(hRatio, vRatio);
 
-  const drawWidth = sourceWidth * ratio;
-  const drawHeight = sourceHeight * ratio;
-  const drawX = (destWidth - drawWidth) / 2;
-  const drawY = (destHeight - drawHeight) / 2;
+  let scale = 1.0;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  // Ken Burns Motion computation
+  if (motion === 'zoom-in') {
+    scale = 1.0 + progress * 0.15; // 1.0 to 1.15
+  } else if (motion === 'zoom-out') {
+    scale = 1.15 - progress * 0.15; // 1.15 to 1.0
+  } else if (motion === 'pan-right') {
+    scale = 1.12;
+    offsetX = (progress - 0.5) * 40;
+  } else if (motion === 'pan-left') {
+    scale = 1.12;
+    offsetX = (0.5 - progress) * 40;
+  }
+
+  const effectiveRatio = baseRatio * scale;
+  const drawWidth = sourceWidth * effectiveRatio;
+  const drawHeight = sourceHeight * effectiveRatio;
+  const drawX = (destWidth - drawWidth) / 2 + offsetX;
+  const drawY = (destHeight - drawHeight) / 2 + offsetY;
 
   if (fit === 'contain') {
-    // Fill background with dark blurred/solid backdrop
     ctx.fillStyle = '#05070D';
     ctx.fillRect(0, 0, destWidth, destHeight);
   }
 
   ctx.drawImage(media, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
 }
 
 // Calculate which clip is active at a given timestamp
@@ -150,9 +171,10 @@ export function getClipAtTime(clips: MediaClip[], currentTime: number) {
 
     if (currentTime >= clipStart && (currentTime < clipEnd || i === clips.length - 1)) {
       const localTime = Math.max(0, currentTime - clipStart);
-      const isNearEnd = i < clips.length - 1 && currentTime >= clipEnd - 0.5;
+      const progress = clip.duration > 0 ? Math.min(1, localTime / clip.duration) : 0;
+      const isNearEnd = i < clips.length - 1 && currentTime >= clipEnd - 0.45;
       const nextClip = i < clips.length - 1 ? clips[i + 1] : null;
-      const transitionProgress = isNearEnd ? (currentTime - (clipEnd - 0.5)) / 0.5 : 0;
+      const transitionProgress = isNearEnd ? (currentTime - (clipEnd - 0.45)) / 0.45 : 0;
 
       return {
         clip,
@@ -160,6 +182,7 @@ export function getClipAtTime(clips: MediaClip[], currentTime: number) {
         clipStart,
         clipEnd,
         localTime,
+        progress,
         isNearEnd,
         nextClip,
         transitionProgress: Math.min(1, Math.max(0, transitionProgress)),
@@ -176,17 +199,127 @@ export function getTotalDuration(clips: MediaClip[]): number {
   return clips.reduce((sum, c) => sum + c.duration, 0);
 }
 
+// Render aesthetic overlays: 35mm Grain, VHS Date Stamp, Camera Viewfinder, Light Leak
+export function renderGlobalOverlay(
+  ctx: CanvasRenderingContext2D,
+  overlay: OverlayEffect,
+  currentTime: number,
+  width: number,
+  height: number
+) {
+  if (!overlay || overlay === 'none') return;
+
+  ctx.save();
+
+  if (overlay === 'grain') {
+    // Fast 35mm film grain simulation
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    const numSpecks = Math.floor((width * height) / 3500);
+    for (let i = 0; i < numSpecks; i++) {
+      const gx = Math.random() * width;
+      const gy = Math.random() * height;
+      const gs = Math.random() * 2 + 1;
+      ctx.fillRect(gx, gy, gs, gs);
+    }
+  } else if (overlay === 'vhs') {
+    // VHS scanlines & retro timestamp
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    for (let y = 0; y < height; y += 4) {
+      ctx.fillRect(0, y, width, 1.5);
+    }
+
+    // Retro VHS OSD text
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#00FF66';
+    ctx.shadowColor = 'rgba(0, 255, 100, 0.8)';
+    ctx.shadowBlur = 6;
+    ctx.textAlign = 'left';
+    ctx.fillText('PLAY ▶ 00:0' + currentTime.toFixed(1), 32, 60);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#FF4444';
+    ctx.shadowColor = 'rgba(255, 68, 68, 0.8)';
+    ctx.fillText('REC ●', width - 32, 60);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.textAlign = 'left';
+    ctx.fillText('OCT 22 2026', 32, height - 40);
+  } else if (overlay === 'viewfinder') {
+    // Camera grid HUD
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+
+    // Corner brackets
+    const bracketSize = 36;
+    const pad = 24;
+
+    // Top-Left
+    ctx.beginPath();
+    ctx.moveTo(pad, pad + bracketSize);
+    ctx.lineTo(pad, pad);
+    ctx.lineTo(pad + bracketSize, pad);
+    ctx.stroke();
+
+    // Top-Right
+    ctx.beginPath();
+    ctx.moveTo(width - pad - bracketSize, pad);
+    ctx.lineTo(width - pad, pad);
+    ctx.lineTo(width - pad, pad + bracketSize);
+    ctx.stroke();
+
+    // Bottom-Left
+    ctx.beginPath();
+    ctx.moveTo(pad, height - pad - bracketSize);
+    ctx.lineTo(pad, height - pad);
+    ctx.lineTo(pad + bracketSize, height - pad);
+    ctx.stroke();
+
+    // Bottom-Right
+    ctx.beginPath();
+    ctx.moveTo(width - pad - bracketSize, height - pad);
+    ctx.lineTo(width - pad, height - pad);
+    ctx.lineTo(width - pad, height - pad - bracketSize);
+    ctx.stroke();
+
+    // Center Crosshair
+    const cx = width / 2;
+    const cy = height / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 15, cy);
+    ctx.lineTo(cx + 15, cy);
+    ctx.moveTo(cx, cy - 15);
+    ctx.lineTo(cx, cy + 15);
+    ctx.stroke();
+
+    // Viewfinder info text
+    ctx.font = '600 13px Inter, monospace';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillText('4K RAW • 60FPS • ISO 200', pad + 10, height - pad - 12);
+  } else if (overlay === 'light-leak') {
+    // Golden sun light leak sweeping from corner
+    const grad = ctx.createRadialGradient(width * 0.85, 0, 20, width * 0.85, 0, width * 0.75);
+    grad.addColorStop(0, 'rgba(251, 146, 60, 0.35)');
+    grad.addColorStop(0.5, 'rgba(236, 72, 153, 0.2)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  ctx.restore();
+}
+
 // Render a single frame to the canvas
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
   clips: MediaClip[],
   textOverlays: TextOverlay[],
   currentTime: number,
-  dimensions: CanvasDimensions
+  dimensions: CanvasDimensions,
+  globalOverlay?: OverlayEffect
 ) {
   const { width, height } = dimensions;
 
-  // Clear canvas
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#0A0D14';
@@ -207,19 +340,35 @@ export function renderFrame(
     return;
   }
 
-  const { clip, localTime, isNearEnd, nextClip, transitionProgress } = active;
+  const { clip, localTime, progress, isNearEnd, nextClip, transitionProgress } = active;
 
   // Helper to draw a specific clip
-  const drawClipToCtx = (targetCtx: CanvasRenderingContext2D, targetClip: MediaClip, timeInClip: number) => {
+  const drawClipToCtx = (
+    targetCtx: CanvasRenderingContext2D,
+    targetClip: MediaClip,
+    timeInClip: number,
+    clipProgress: number
+  ) => {
     targetCtx.save();
     applyFilter(targetCtx, targetClip.filter);
+
+    const motion = targetClip.motion || (targetClip.type === 'photo' ? 'zoom-in' : 'none');
 
     if (targetClip.type === 'photo') {
       const img = mediaCache.getCachedImage(targetClip.src);
       if (img && img.complete) {
-        drawMediaFitted(targetCtx, img, img.naturalWidth || 720, img.naturalHeight || 1280, width, height, targetClip.fit);
+        drawMediaFitted(
+          targetCtx,
+          img,
+          img.naturalWidth || 720,
+          img.naturalHeight || 1280,
+          width,
+          height,
+          targetClip.fit,
+          motion,
+          clipProgress
+        );
       } else {
-        // Trigger load
         mediaCache.getImage(targetClip.src);
       }
     } else {
@@ -230,29 +379,37 @@ export function renderFrame(
         if (Math.abs(video.currentTime - targetVideoTime) > 0.15) {
           video.currentTime = targetVideoTime;
         }
-        drawMediaFitted(targetCtx, video, video.videoWidth || 720, video.videoHeight || 1280, width, height, targetClip.fit);
+        drawMediaFitted(
+          targetCtx,
+          video,
+          video.videoWidth || 720,
+          video.videoHeight || 1280,
+          width,
+          height,
+          targetClip.fit,
+          'none',
+          0
+        );
       }
     }
     targetCtx.restore();
   };
 
-  // Check for transition
+  // Transition handling
   const transitionType: TransitionType = clip.transition || 'none';
 
   if (isNearEnd && nextClip && transitionType !== 'none') {
-    // Create an offscreen buffer for the outgoing clip
     const off1 = document.createElement('canvas');
     off1.width = width;
     off1.height = height;
     const ctx1 = off1.getContext('2d')!;
-    drawClipToCtx(ctx1, clip, localTime);
+    drawClipToCtx(ctx1, clip, localTime, progress);
 
-    // Create an offscreen buffer for the incoming next clip
     const off2 = document.createElement('canvas');
     off2.width = width;
     off2.height = height;
     const ctx2 = off2.getContext('2d')!;
-    drawClipToCtx(ctx2, nextClip, 0);
+    drawClipToCtx(ctx2, nextClip, 0, 0);
 
     const p = transitionProgress;
 
@@ -282,7 +439,7 @@ export function renderFrame(
         break;
 
       case 'zoom-in': {
-        const scale1 = 1 + p * 0.5;
+        const scale1 = 1 + p * 0.4;
         ctx.save();
         ctx.translate(width / 2, height / 2);
         ctx.scale(scale1, scale1);
@@ -316,12 +473,16 @@ export function renderFrame(
       }
 
       default:
-        drawClipToCtx(ctx, clip, localTime);
+        drawClipToCtx(ctx, clip, localTime, progress);
         break;
     }
   } else {
-    // Normal single clip rendering
-    drawClipToCtx(ctx, clip, localTime);
+    drawClipToCtx(ctx, clip, localTime, progress);
+  }
+
+  // Draw Global Aesthetic Overlay (Grain, VHS, Viewfinder, Light Leak)
+  if (globalOverlay) {
+    renderGlobalOverlay(ctx, globalOverlay, currentTime, width, height);
   }
 
   // Draw Text Overlays
@@ -347,7 +508,6 @@ function renderTextOverlay(
 
   ctx.save();
 
-  // Animation transforms
   let alpha = 1;
   let scale = 1;
   let offsetY = 0;
@@ -382,7 +542,6 @@ function renderTextOverlay(
   const targetX = (item.x / 100) * canvasWidth;
   const targetY = (item.y / 100) * canvasHeight + offsetY;
 
-  // Scale based on canvas resolution (base is 720 width)
   const scaleFactor = canvasWidth / 720;
   const fontSize = Math.round(item.fontSize * scaleFactor);
 
@@ -398,7 +557,6 @@ function renderTextOverlay(
   ctx.translate(targetX, targetY);
   ctx.scale(scale, scale);
 
-  // Background box / pill if specified
   if (item.backgroundColor && item.backgroundColor !== 'transparent') {
     const padX = 22 * scaleFactor;
     const padY = 12 * scaleFactor;
@@ -421,13 +579,11 @@ function renderTextOverlay(
     ctx.fill();
   }
 
-  // Text shadow for legibility
   ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
   ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 2;
   ctx.shadowOffsetY = 2;
 
-  // Fill text
   ctx.fillStyle = item.color;
   ctx.fillText(displayText, 0, 0);
 

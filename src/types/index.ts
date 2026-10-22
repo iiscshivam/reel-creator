@@ -8,6 +8,10 @@ export type FilterType = 'normal' | 'vibrant' | 'vintage' | 'noir' | 'warm' | 'c
 
 export type TextAnimation = 'none' | 'pop' | 'fade' | 'slide-up' | 'typewriter';
 
+export type MotionEffect = 'none' | 'zoom-in' | 'zoom-out' | 'pan-right' | 'pan-left';
+
+export type OverlayEffect = 'none' | 'grain' | 'vhs' | 'viewfinder' | 'light-leak';
+
 export interface MediaClip {
   id: string;
   type: MediaType;
@@ -18,6 +22,7 @@ export interface MediaClip {
   transition: TransitionType;
   filter: FilterType;
   fit: 'cover' | 'contain';
+  motion?: MotionEffect; // Ken Burns dynamic photo motion
   volume?: number; // 0 to 1 for video clips
   speed?: number; // 0.5, 1, 1.5, 2
   rotation?: number; // 0, 90, 180, 270
@@ -48,6 +53,7 @@ export interface AudioTrack {
   volume: number; // 0 to 1
   genre?: string;
   artist?: string;
+  bpm?: number; // Beats Per Minute for auto-sync
 }
 
 export interface ReelProject {
@@ -57,5 +63,6 @@ export interface ReelProject {
   clips: MediaClip[];
   textOverlays: TextOverlay[];
   audioTrack: AudioTrack | null;
+  globalOverlay?: OverlayEffect;
   fps: number;
 }

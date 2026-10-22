@@ -1,6 +1,6 @@
 import React from 'react';
-import { MediaClip, TextOverlay, FilterType, TransitionType, TextAnimation } from '../types';
-import { Sliders, Sparkles, Wand2, Trash2, Copy, MoveHorizontal, Palette, Info } from 'lucide-react';
+import { MediaClip, TextOverlay, FilterType, TransitionType, TextAnimation, MotionEffect, OverlayEffect } from '../types';
+import { Sliders, Sparkles, Wand2, Trash2, Copy, MoveHorizontal, Palette, Info, Eye, Layers } from 'lucide-react';
 
 interface InspectorPanelProps {
   selectedClip: MediaClip | null;
@@ -10,6 +10,8 @@ interface InspectorPanelProps {
   onDuplicateClip: (clip: MediaClip) => void;
   onDeleteClip: (id: string) => void;
   onDeleteText: (id: string) => void;
+  globalOverlay?: OverlayEffect;
+  onChangeOverlay?: (overlay: OverlayEffect) => void;
   totalDuration: number;
 }
 
@@ -21,6 +23,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   onDuplicateClip,
   onDeleteClip,
   onDeleteText,
+  globalOverlay = 'none',
+  onChangeOverlay,
   totalDuration,
 }) => {
   const FILTERS: { id: FilterType; label: string; desc: string }[] = [
@@ -40,6 +44,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     { id: 'slide-left', label: 'Slide Left' },
     { id: 'fade-black', label: 'Fade to Black' },
     { id: 'flash', label: 'Flash' },
+  ];
+
+  const MOTIONS: { id: MotionEffect; label: string }[] = [
+    { id: 'zoom-in', label: 'Slow Zoom In' },
+    { id: 'zoom-out', label: 'Slow Zoom Out' },
+    { id: 'pan-right', label: 'Pan Right' },
+    { id: 'none', label: 'Static' },
   ];
 
   const FONTS = [
@@ -66,7 +77,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           Inspector
         </h2>
         <span className="text-[11px] text-slate-500">
-          {selectedClip ? 'Clip Properties' : selectedText ? 'Text Properties' : 'Project Info'}
+          {selectedClip ? 'Clip Properties' : selectedText ? 'Text Properties' : 'Project Settings'}
         </span>
       </div>
 
@@ -92,9 +103,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               </div>
               <input
                 type="range"
-                min="1.0"
+                min="0.4"
                 max="10.0"
-                step="0.5"
+                step="0.1"
                 value={selectedClip.duration}
                 onChange={(e) =>
                   onUpdateClip({ ...selectedClip, duration: parseFloat(e.target.value) })
@@ -102,6 +113,31 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 className="w-full accent-pink-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
               />
             </div>
+
+            {/* Ken Burns Motion Effect (for photos) */}
+            {selectedClip.type === 'photo' && (
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-pink-400" />
+                  Ken Burns Motion
+                </span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {MOTIONS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => onUpdateClip({ ...selectedClip, motion: m.id })}
+                      className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition ${
+                        (selectedClip.motion || 'zoom-in') === m.id
+                          ? 'bg-pink-500 text-white border-pink-500 shadow'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Fit mode */}
             <div className="space-y-1.5">
@@ -377,9 +413,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           </div>
         )}
 
-        {/* CASE 3: NO SELECTION (OVERVIEW) */}
+        {/* CASE 3: NO SELECTION (PROJECT SETTINGS) */}
         {!selectedClip && !selectedText && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="p-4 rounded-2xl bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent border border-pink-500/20">
               <div className="flex items-center gap-2 mb-2">
                 <Wand2 className="w-4 h-4 text-pink-400" />
@@ -388,14 +424,48 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 </h3>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Select any photo or video clip in the timeline below to customize its duration, color grade filters, and transition animations.
+                Add photos, videos, and music. Use the top bar to auto-sync clips to the audio beat, or customize individual clips below.
               </p>
             </div>
+
+            {/* Global Aesthetic Overlay */}
+            {onChangeOverlay && (
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-pink-400" />
+                  Film & Aesthetic Overlay
+                </span>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {[
+                    { id: 'none' as OverlayEffect, label: 'Clean (No Overlay)', desc: 'Pure digital footage' },
+                    { id: 'light-leak' as OverlayEffect, label: 'Golden Light Leak', desc: 'Warm cinematic bokeh' },
+                    { id: 'grain' as OverlayEffect, label: '35mm Film Grain', desc: 'VSCO-style analog texture' },
+                    { id: 'vhs' as OverlayEffect, label: 'Retro VHS 2026', desc: 'Scanlines & retro date stamp' },
+                    { id: 'viewfinder' as OverlayEffect, label: '4K Camera Viewfinder', desc: 'Professional camera HUD' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => onChangeOverlay(item.id)}
+                      className={`py-2 px-3 rounded-xl text-left border transition flex items-center justify-between ${
+                        globalOverlay === item.id
+                          ? 'bg-pink-500/15 border-pink-500 text-pink-300'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-semibold">{item.label}</div>
+                        <div className="text-[10px] text-slate-500">{item.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5" />
-                Quick Shortcuts
+                Key Shortcuts
               </span>
               <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 text-xs text-slate-300">
                 <div className="flex justify-between">
@@ -405,12 +475,12 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   </kbd>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Scrub Time</span>
-                  <span className="text-slate-300 font-medium">Click on Timeline</span>
+                  <span className="text-slate-400">Auto Beat Sync</span>
+                  <span className="text-amber-400 font-semibold">Click ⚡ Beat Sync</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Add Text</span>
-                  <span className="text-slate-300 font-medium">Click "Add Text" in Top Bar</span>
+                  <span className="text-slate-400">Add Text Hooks</span>
+                  <span className="text-slate-300 font-medium">Use "Hooks" tab on left</span>
                 </div>
               </div>
             </div>

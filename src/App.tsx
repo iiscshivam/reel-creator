@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ReelProject, MediaClip, TextOverlay, AudioTrack, AspectRatio } from './types';
-import { getInitialProject, generateCanvasPattern, createSynthAudioWav } from './utils/sampleData';
+import { ReelProject, MediaClip, TextOverlay, AudioTrack, AspectRatio, OverlayEffect, TextAnimation } from './types';
+import { getInitialProject, generateCanvasPattern, createSynthAudioWav, autoSyncClipsToBpm } from './utils/sampleData';
 import { getTotalDuration } from './utils/engine';
 import { exportReel, ExportProgress } from './utils/exporter';
 import { Header } from './components/Header';
@@ -9,6 +9,7 @@ import { PhonePreview } from './components/PhonePreview';
 import { Timeline } from './components/Timeline';
 import { InspectorPanel } from './components/InspectorPanel';
 import { ExportModal } from './components/ExportModal';
+import confetti from 'canvas-confetti';
 
 export const App: React.FC = () => {
   const [project, setProject] = useState<ReelProject>(() => getInitialProject());
@@ -100,7 +101,6 @@ export const App: React.FC = () => {
   // Spacebar play/pause shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in input or textarea
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -131,20 +131,45 @@ export const App: React.FC = () => {
     setProject((prev) => ({ ...prev, aspectRatio: ratio }));
   };
 
-  // Add new text overlay at current timestamp
-  const handleAddText = () => {
+  const handleChangeOverlay = (overlay: OverlayEffect) => {
+    setProject((prev) => ({ ...prev, globalOverlay: overlay }));
+  };
+
+  // One-Click Auto Beat-Sync
+  const handleAutoSyncBeat = () => {
+    const bpm = project.audioTrack?.bpm || 128;
+    const syncedClips = autoSyncClipsToBpm(project.clips, bpm, 'fast');
+
+    setProject((prev) => ({
+      ...prev,
+      clips: syncedClips,
+    }));
+
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.2 },
+      });
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  // Add caption hook
+  const handleAddCaption = (text: string, animation: TextAnimation = 'pop') => {
     const newText: TextOverlay = {
       id: 'text-' + Date.now(),
-      text: 'NEW CAPTION ✨',
+      text,
       startTime: Math.max(0, parseFloat(currentTime.toFixed(1))),
       duration: 3.0,
       x: 50,
-      y: 50,
+      y: 45,
       fontSize: 34,
       fontFamily: 'Outfit',
       color: '#FFFFFF',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      animation: 'pop',
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      animation,
       align: 'center',
       bold: true,
     };
@@ -158,11 +183,17 @@ export const App: React.FC = () => {
     setSelectedClipId(null);
   };
 
+  // Add text overlay
+  const handleAddText = () => {
+    handleAddCaption('NEW CAPTION ✨', 'pop');
+  };
+
   // Add media clip
   const handleAddClip = (clipData: Omit<MediaClip, 'id'>) => {
     const newClip: MediaClip = {
       ...clipData,
       id: 'clip-' + Date.now(),
+      motion: clipData.motion || (clipData.type === 'photo' ? 'zoom-in' : 'none'),
     };
 
     setProject((prev) => ({
@@ -193,7 +224,7 @@ export const App: React.FC = () => {
     setProject((prev) => ({
       ...prev,
       clips: prev.clips.map((c) =>
-        c.id === id ? { ...c, duration: Math.max(1.0, Math.min(15.0, c.duration + delta)) } : c
+        c.id === id ? { ...c, duration: Math.max(0.4, Math.min(15.0, parseFloat((c.duration + delta).toFixed(1)))) } : c
       ),
     }));
   };
@@ -253,7 +284,114 @@ export const App: React.FC = () => {
 
   // Load preset templates
   const handleLoadTemplate = (templateName: string) => {
-    if (templateName === 'sunset') {
+    if (templateName === 'photodump') {
+      // 5 fast snappy beat-synced photos (CapCut #1 style)
+      const p1 = generateCanvasPattern('sunset');
+      const p2 = generateCanvasPattern('cyberpunk');
+      const p3 = generateCanvasPattern('nature');
+      const p4 = generateCanvasPattern('urban');
+      const p5 = generateCanvasPattern('abstract');
+      const audio = createSynthAudioWav('upbeat', 15);
+
+      setProject({
+        id: 'proj-photodump',
+        title: '2026 Camera Roll Dump',
+        aspectRatio: '9:16',
+        fps: 30,
+        globalOverlay: 'light-leak',
+        clips: [
+          { id: 'pd-1', type: 'photo', title: 'Sunset Shot', src: p1, thumbnail: p1, duration: 0.94, transition: 'flash', filter: 'warm', fit: 'cover', motion: 'zoom-in' },
+          { id: 'pd-2', type: 'photo', title: 'Neon Night', src: p2, thumbnail: p2, duration: 0.94, transition: 'flash', filter: 'cyberpunk', fit: 'cover', motion: 'zoom-out' },
+          { id: 'pd-3', type: 'photo', title: 'Forest Calm', src: p3, thumbnail: p3, duration: 0.94, transition: 'flash', filter: 'vibrant', fit: 'cover', motion: 'pan-right' },
+          { id: 'pd-4', type: 'photo', title: 'City Walk', src: p4, thumbnail: p4, duration: 0.94, transition: 'flash', filter: 'dramatic', fit: 'cover', motion: 'zoom-in' },
+          { id: 'pd-5', type: 'photo', title: 'Festival Vibe', src: p5, thumbnail: p5, duration: 0.94, transition: 'crossfade', filter: 'normal', fit: 'cover', motion: 'zoom-out' },
+        ],
+        textOverlays: [
+          {
+            id: 'pt-1',
+            text: 'CAMERA ROLL DUMP 📸',
+            startTime: 0.2,
+            duration: 2.5,
+            x: 50,
+            y: 35,
+            fontSize: 36,
+            fontFamily: 'Outfit',
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            animation: 'pop',
+            align: 'center',
+            bold: true,
+          },
+          {
+            id: 'pt-2',
+            text: '2026 MEMORIES ✨',
+            startTime: 2.8,
+            duration: 1.8,
+            x: 50,
+            y: 75,
+            fontSize: 34,
+            fontFamily: 'Bebas Neue',
+            color: '#F43F5E',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            animation: 'slide-up',
+            align: 'center',
+            bold: true,
+          }
+        ],
+        audioTrack: {
+          id: 'audio-upbeat',
+          title: 'Upbeat Electro Beat',
+          src: audio,
+          duration: 15,
+          volume: 0.85,
+          genre: 'Electronic',
+          bpm: 128,
+        },
+      });
+    } else if (templateName === 'filmvlog') {
+      // 35mm film vintage vlog with VHS stamp (VSCO aesthetic style)
+      const p1 = generateCanvasPattern('sunset');
+      const p2 = generateCanvasPattern('nature');
+      const audio = createSynthAudioWav('lofi', 15);
+
+      setProject({
+        id: 'proj-film',
+        title: '35mm Film Vlog',
+        aspectRatio: '9:16',
+        fps: 30,
+        globalOverlay: 'vhs',
+        clips: [
+          { id: 'f-1', type: 'photo', title: 'Analog Golden Hour', src: p1, thumbnail: p1, duration: 4.0, transition: 'crossfade', filter: 'vintage', fit: 'cover', motion: 'zoom-in' },
+          { id: 'f-2', type: 'photo', title: 'Coastal Breeze', src: p2, thumbnail: p2, duration: 4.0, transition: 'fade-black', filter: 'warm', fit: 'cover', motion: 'zoom-out' },
+        ],
+        textOverlays: [
+          {
+            id: 'ft-1',
+            text: 'ROMANTICIZE YOUR LIFE 🕊️',
+            startTime: 0.5,
+            duration: 3.5,
+            x: 50,
+            y: 40,
+            fontSize: 32,
+            fontFamily: 'Playfair Display',
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            animation: 'fade',
+            align: 'center',
+            bold: true,
+          },
+        ],
+        audioTrack: {
+          id: 'audio-lofi',
+          title: 'Chilled Lo-Fi Sunset',
+          src: audio,
+          duration: 15,
+          volume: 0.8,
+          genre: 'Lo-Fi',
+          bpm: 84,
+        },
+      });
+    } else if (templateName === 'sunset') {
       const img1 = generateCanvasPattern('sunset');
       const img2 = generateCanvasPattern('nature');
       const audio = createSynthAudioWav('lofi', 15);
@@ -263,29 +401,10 @@ export const App: React.FC = () => {
         title: 'Golden Sunset Vibe',
         aspectRatio: '9:16',
         fps: 30,
+        globalOverlay: 'light-leak',
         clips: [
-          {
-            id: 's-1',
-            type: 'photo',
-            title: 'Golden Hour',
-            src: img1,
-            thumbnail: img1,
-            duration: 4.0,
-            transition: 'crossfade',
-            filter: 'warm',
-            fit: 'cover',
-          },
-          {
-            id: 's-2',
-            type: 'photo',
-            title: 'Tropical Calm',
-            src: img2,
-            thumbnail: img2,
-            duration: 4.0,
-            transition: 'fade-black',
-            filter: 'vibrant',
-            fit: 'cover',
-          },
+          { id: 's-1', type: 'photo', title: 'Golden Hour', src: img1, thumbnail: img1, duration: 4.0, transition: 'crossfade', filter: 'warm', fit: 'cover', motion: 'zoom-in' },
+          { id: 's-2', type: 'photo', title: 'Tropical Calm', src: img2, thumbnail: img2, duration: 4.0, transition: 'fade-black', filter: 'vibrant', fit: 'cover', motion: 'zoom-out' },
         ],
         textOverlays: [
           {
@@ -303,21 +422,6 @@ export const App: React.FC = () => {
             align: 'center',
             bold: true,
           },
-          {
-            id: 'st-2',
-            text: 'PEACE & TRANQUILITY 🌴',
-            startTime: 4.2,
-            duration: 3.5,
-            x: 50,
-            y: 75,
-            fontSize: 32,
-            fontFamily: 'Playfair Display',
-            color: '#FDE047',
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            animation: 'slide-up',
-            align: 'center',
-            bold: true,
-          },
         ],
         audioTrack: {
           id: 'audio-lofi',
@@ -326,6 +430,7 @@ export const App: React.FC = () => {
           duration: 15,
           volume: 0.85,
           genre: 'Lo-Fi',
+          bpm: 84,
         },
       });
     } else if (templateName === 'cyberpunk') {
@@ -338,29 +443,10 @@ export const App: React.FC = () => {
         title: 'Cyberpunk Neon',
         aspectRatio: '9:16',
         fps: 30,
+        globalOverlay: 'viewfinder',
         clips: [
-          {
-            id: 'c-1',
-            type: 'photo',
-            title: 'Tokyo Neon Grid',
-            src: img1,
-            thumbnail: img1,
-            duration: 3.5,
-            transition: 'zoom-in',
-            filter: 'cyberpunk',
-            fit: 'cover',
-          },
-          {
-            id: 'c-2',
-            type: 'photo',
-            title: 'Metropolis Skyline',
-            src: img2,
-            thumbnail: img2,
-            duration: 3.5,
-            transition: 'flash',
-            filter: 'noir',
-            fit: 'cover',
-          },
+          { id: 'c-1', type: 'photo', title: 'Tokyo Neon Grid', src: img1, thumbnail: img1, duration: 3.5, transition: 'zoom-in', filter: 'cyberpunk', fit: 'cover', motion: 'zoom-in' },
+          { id: 'c-2', type: 'photo', title: 'Metropolis Skyline', src: img2, thumbnail: img2, duration: 3.5, transition: 'flash', filter: 'noir', fit: 'cover', motion: 'zoom-out' },
         ],
         textOverlays: [
           {
@@ -386,6 +472,7 @@ export const App: React.FC = () => {
           duration: 15,
           volume: 0.8,
           genre: 'Electronic',
+          bpm: 128,
         },
       });
     }
@@ -428,6 +515,9 @@ export const App: React.FC = () => {
         onAddText={handleAddText}
         onExport={handleExportReel}
         onLoadTemplate={handleLoadTemplate}
+        onAutoSyncBeat={handleAutoSyncBeat}
+        globalOverlay={project.globalOverlay}
+        onChangeOverlay={handleChangeOverlay}
         totalDuration={totalDuration}
       />
 
@@ -437,6 +527,7 @@ export const App: React.FC = () => {
         <MediaLibrary
           onAddClip={handleAddClip}
           onSetAudio={handleSetAudio}
+          onAddCaption={handleAddCaption}
           currentAudioId={project.audioTrack?.id}
         />
 
@@ -467,6 +558,8 @@ export const App: React.FC = () => {
           onDuplicateClip={handleDuplicateClip}
           onDeleteClip={handleDeleteClip}
           onDeleteText={handleDeleteText}
+          globalOverlay={project.globalOverlay}
+          onChangeOverlay={handleChangeOverlay}
           totalDuration={totalDuration}
         />
       </div>
@@ -505,3 +598,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+export default App;

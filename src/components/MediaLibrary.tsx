@@ -1,20 +1,22 @@
 import React, { useState, useRef } from 'react';
-import { MediaClip, AudioTrack } from '../types';
-import { SAMPLE_PHOTOS, SAMPLE_VIDEOS, createSynthAudioWav, generateCanvasPattern } from '../utils/sampleData';
-import { Upload, Image as ImageIcon, Video, Music, Plus, Play, Pause, Sparkles } from 'lucide-react';
+import { MediaClip, AudioTrack, TextAnimation } from '../types';
+import { SAMPLE_PHOTOS, SAMPLE_VIDEOS, VIRAL_CAPTION_HOOKS, createSynthAudioWav, generateCanvasPattern } from '../utils/sampleData';
+import { Upload, Image as ImageIcon, Video, Music, Plus, Play, Pause, Sparkles, MessageSquare } from 'lucide-react';
 
 interface MediaLibraryProps {
   onAddClip: (clip: Omit<MediaClip, 'id'>) => void;
   onSetAudio: (audio: AudioTrack) => void;
+  onAddCaption?: (text: string, animation: TextAnimation) => void;
   currentAudioId?: string;
 }
 
 export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onAddClip,
   onSetAudio,
+  onAddCaption,
   currentAudioId,
 }) => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'photos' | 'videos' | 'audio'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'photos' | 'videos' | 'audio' | 'captions'>('upload');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -40,9 +42,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
           transition: 'crossfade',
           filter: 'normal',
           fit: 'cover',
+          motion: 'zoom-in',
         });
       } else if (isVideo) {
-        // Read video duration using temp video element
         const tempVideo = document.createElement('video');
         tempVideo.src = objectUrl;
         tempVideo.onloadedmetadata = () => {
@@ -71,6 +73,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             duration: tempAudio.duration || 15,
             volume: 0.8,
             genre: 'Custom Audio',
+            bpm: 128,
           });
         };
       }
@@ -100,50 +103,61 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   return (
     <div className="w-80 border-r border-slate-800 bg-[#0F141F] flex flex-col h-full shrink-0">
       {/* Navigation Tabs */}
-      <div className="grid grid-cols-4 p-2 gap-1 border-b border-slate-800 bg-slate-900/50">
+      <div className="grid grid-cols-5 p-2 gap-1 border-b border-slate-800 bg-slate-900/50">
         <button
           onClick={() => setActiveTab('upload')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[11px] font-semibold transition ${
+          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
             activeTab === 'upload'
               ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
-          <Upload className="w-4 h-4 mb-1" />
+          <Upload className="w-3.5 h-3.5 mb-1" />
           Upload
         </button>
         <button
           onClick={() => setActiveTab('photos')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[11px] font-semibold transition ${
+          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
             activeTab === 'photos'
               ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
-          <ImageIcon className="w-4 h-4 mb-1" />
+          <ImageIcon className="w-3.5 h-3.5 mb-1" />
           Photos
         </button>
         <button
           onClick={() => setActiveTab('videos')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[11px] font-semibold transition ${
+          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
             activeTab === 'videos'
               ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
-          <Video className="w-4 h-4 mb-1" />
+          <Video className="w-3.5 h-3.5 mb-1" />
           Videos
         </button>
         <button
           onClick={() => setActiveTab('audio')}
-          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[11px] font-semibold transition ${
+          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
             activeTab === 'audio'
               ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
-          <Music className="w-4 h-4 mb-1" />
+          <Music className="w-3.5 h-3.5 mb-1" />
           Music
+        </button>
+        <button
+          onClick={() => setActiveTab('captions')}
+          className={`flex flex-col items-center py-2 px-1 rounded-lg text-[10px] font-semibold transition ${
+            activeTab === 'captions'
+              ? 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5 mb-1" />
+          Hooks
         </button>
       </div>
 
@@ -181,12 +195,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 space-y-2">
               <div className="flex items-center gap-1.5 font-semibold text-pink-400">
                 <Sparkles className="w-3.5 h-3.5" />
-                Quick Tips for Viral Reels
+                Why Creators Love This
               </div>
               <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400">
-                <li>Ideal reel length is 7 to 15 seconds.</li>
-                <li>Hook viewers with a text card in the first 2 seconds.</li>
-                <li>Sync your photo transitions to the audio beat.</li>
+                <li>Zero paywalls, zero watermarks, 100% free.</li>
+                <li>Ken Burns photo motion keeps viewers hooked.</li>
+                <li>One-click Beat Sync cuts clips to the rhythm.</li>
               </ul>
             </div>
           </div>
@@ -201,7 +215,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
               </span>
               <button
                 onClick={() => {
-                  const patterns = ['sunset', 'cyberpunk', 'nature', 'urban', 'abstract'] as const;
+                  const patterns = ['sunset', 'cyberpunk', 'nature', 'urban', 'abstract', 'minimal'] as const;
                   const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
                   const patternUrl = generateCanvasPattern(randomPattern);
                   onAddClip({
@@ -213,6 +227,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     transition: 'zoom-in',
                     filter: 'normal',
                     fit: 'cover',
+                    motion: 'zoom-in',
                   });
                 }}
                 className="text-[11px] text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1"
@@ -238,6 +253,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         transition: 'crossfade',
                         filter: photo.fallbackType === 'sunset' ? 'warm' : photo.fallbackType === 'cyberpunk' ? 'cyberpunk' : 'normal',
                         fit: 'cover',
+                        motion: i % 2 === 0 ? 'zoom-in' : 'zoom-out',
                       });
                     }}
                     className="group relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-900 border border-slate-800 cursor-pointer hover:border-pink-500 transition shadow"
@@ -254,7 +270,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                       <p className="text-[11px] font-semibold text-white leading-tight">
                         {photo.title}
                       </p>
-                      <span className="text-[9px] text-slate-300">Photo • 3s</span>
+                      <span className="text-[9px] text-slate-300">Photo • Ken Burns</span>
                     </div>
                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg">
                       <Plus className="w-3.5 h-3.5" />
@@ -333,9 +349,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
             <div className="space-y-2">
               {[
-                { id: 'synth-upbeat', title: 'Upbeat Electro Beat', genre: 'Electronic / Dance', type: 'upbeat' as const },
-                { id: 'synth-lofi', title: 'Chilled Lo-Fi Sunset', genre: 'Lo-Fi / Hip-Hop', type: 'lofi' as const },
-                { id: 'synth-cinematic', title: 'Cinematic Ambient Flow', genre: 'Cinematic / Drone', type: 'cinematic' as const },
+                { id: 'synth-upbeat', title: 'Upbeat Electro Beat', bpm: 128, genre: 'Electronic / Dance', type: 'upbeat' as const },
+                { id: 'synth-lofi', title: 'Chilled Lo-Fi Sunset', bpm: 84, genre: 'Lo-Fi / Hip-Hop', type: 'lofi' as const },
+                { id: 'synth-cinematic', title: 'Cinematic Ambient Flow', bpm: 70, genre: 'Cinematic / Drone', type: 'cinematic' as const },
               ].map((item) => {
                 const isSelected = currentAudioId === item.id;
                 const isPlaying = playingAudioId === item.id;
@@ -366,7 +382,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         </button>
                         <div>
                           <div className="text-xs font-bold text-slate-200">{item.title}</div>
-                          <div className="text-[10px] text-slate-400">{item.genre} • 15s</div>
+                          <div className="text-[10px] text-slate-400">{item.genre} • {item.bpm} BPM</div>
                         </div>
                       </div>
 
@@ -380,6 +396,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                             duration: 15,
                             volume: 0.8,
                             genre: item.genre,
+                            bpm: item.bpm,
                           });
                         }}
                         className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
@@ -394,6 +411,43 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: VIRAL CAPTION HOOKS (CapCut style) */}
+        {activeTab === 'captions' && (
+          <div className="space-y-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              1-Click Viral Captions
+            </span>
+            <p className="text-[11px] text-slate-400">
+              Click any trending hook to instantly place it as an animated text card on your reel.
+            </p>
+            <div className="space-y-2">
+              {VIRAL_CAPTION_HOOKS.map((hook, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    if (onAddCaption) {
+                      onAddCaption(hook.text, hook.animation);
+                    }
+                  }}
+                  className="group p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-pink-500 cursor-pointer transition flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-200 group-hover:text-pink-400 transition">
+                      {hook.text}
+                    </p>
+                    <span className="text-[10px] text-slate-400 capitalize">
+                      Anim: {hook.animation}
+                    </span>
+                  </div>
+                  <button className="p-1 rounded-lg bg-slate-800 text-slate-300 group-hover:bg-pink-500 group-hover:text-white transition">
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}

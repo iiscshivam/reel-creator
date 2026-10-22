@@ -1,6 +1,6 @@
 import React from 'react';
-import { AspectRatio } from '../types';
-import { Film, Download, Type, Sparkles, Smartphone, Square, Monitor } from 'lucide-react';
+import { AspectRatio, OverlayEffect } from '../types';
+import { Film, Download, Type, Sparkles, Smartphone, Square, Monitor, Zap, Layers } from 'lucide-react';
 
 interface HeaderProps {
   aspectRatio: AspectRatio;
@@ -8,6 +8,9 @@ interface HeaderProps {
   onAddText: () => void;
   onExport: () => void;
   onLoadTemplate: (templateName: string) => void;
+  onAutoSyncBeat: () => void;
+  globalOverlay?: OverlayEffect;
+  onChangeOverlay: (overlay: OverlayEffect) => void;
   totalDuration: number;
 }
 
@@ -17,13 +20,16 @@ export const Header: React.FC<HeaderProps> = ({
   onAddText,
   onExport,
   onLoadTemplate,
+  onAutoSyncBeat,
+  globalOverlay = 'none',
+  onChangeOverlay,
   totalDuration,
 }) => {
   return (
-    <header className="h-16 border-b border-slate-800 bg-[#0B0F17]/90 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
+    <header className="h-16 border-b border-slate-800 bg-[#0B0F17]/95 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
       {/* Brand & Title */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-400 flex items-center justify-center shadow-lg shadow-pink-500/20">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-400 flex items-center justify-center shadow-lg shadow-pink-500/25">
           <Film className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -32,16 +38,16 @@ export const Header: React.FC<HeaderProps> = ({
               Reel Creator
             </h1>
             <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-pink-500/20 text-pink-400 border border-pink-500/30">
-              Studio
+              Pro Studio
             </span>
           </div>
           <p className="text-xs text-slate-400 hidden sm:block">
-            {totalDuration.toFixed(1)}s Reel • Turn photos & videos into viral reels
+            {totalDuration.toFixed(1)}s Reel • AI Beat-Sync & Ken Burns Motion
           </p>
         </div>
       </div>
 
-      {/* Center Controls: Aspect Ratio & Quick Templates */}
+      {/* Center Controls: Aspect Ratio, Beat Sync & Templates */}
       <div className="flex items-center gap-2">
         {/* Aspect Ratio Switcher */}
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-1 flex items-center gap-1 shadow-inner">
@@ -85,21 +91,49 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* Templates Dropdown / Presets */}
+        {/* ⚡ One-Click Auto Beat-Sync (CapCut #1 Loved Feature) */}
+        <button
+          onClick={onAutoSyncBeat}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1.5 transition shadow-sm active:scale-95"
+          title="Auto-sync photos to music beat (0.47s snappy cuts)"
+        >
+          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+          <span className="hidden lg:inline">Beat Sync</span>
+        </button>
+
+        {/* Aesthetic Film Overlay Selector (VSCO Style) */}
+        <div className="hidden xl:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs">
+          <Layers className="w-3.5 h-3.5 text-pink-400 ml-1.5" />
+          <select
+            value={globalOverlay}
+            onChange={(e) => onChangeOverlay(e.target.value as OverlayEffect)}
+            className="bg-transparent text-slate-200 py-0.5 px-1.5 rounded text-xs focus:outline-none cursor-pointer"
+          >
+            <option value="none">No Overlay</option>
+            <option value="light-leak">Golden Light Leak</option>
+            <option value="grain">35mm Film Grain</option>
+            <option value="vhs">Retro VHS 2026</option>
+            <option value="viewfinder">4K Viewfinder</option>
+          </select>
+        </div>
+
+        {/* Viral Templates Presets */}
         <div className="hidden lg:flex items-center gap-1.5">
           <button
-            onClick={() => onLoadTemplate('sunset')}
-            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 transition"
+            onClick={() => onLoadTemplate('photodump')}
+            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-pink-500/40 hover:text-pink-300 transition"
+            title="Snappy 0.5s beat cuts with Ken Burns zoom"
           >
-            <Sparkles className="w-3 h-3 text-amber-400 inline mr-1" />
-            Sunset Vibe
+            <Sparkles className="w-3 h-3 text-pink-400 inline mr-1" />
+            Photo Dump
           </button>
           <button
-            onClick={() => onLoadTemplate('cyberpunk')}
-            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 transition"
+            onClick={() => onLoadTemplate('filmvlog')}
+            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 bg-slate-900 border border-slate-800 hover:border-amber-500/40 hover:text-amber-300 transition"
+            title="35mm Film Grain, Vintage Sepia, VHS date stamp"
           >
-            <Sparkles className="w-3 h-3 text-cyan-400 inline mr-1" />
-            Neon Night
+            <Sparkles className="w-3 h-3 text-amber-400 inline mr-1" />
+            35mm Vlog
           </button>
         </div>
       </div>

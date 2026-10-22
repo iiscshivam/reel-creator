@@ -162,7 +162,7 @@ export async function exportReel(
     const exportTimer = setInterval(() => {
       elapsed += 1 / fps;
 
-      renderFrame(ctx, project.clips, project.textOverlays, elapsed, dimensions);
+      renderFrame(ctx, project.clips, project.textOverlays, elapsed, dimensions, project.globalOverlay);
 
       const percent = Math.min(99, Math.round((elapsed / totalDuration) * 100));
       onProgress({

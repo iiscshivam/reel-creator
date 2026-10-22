@@ -45,7 +45,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
       canvas.height = dims.height;
     }
 
-    renderFrame(ctx, project.clips, project.textOverlays, currentTime, dims);
+    renderFrame(ctx, project.clips, project.textOverlays, currentTime, dims, project.globalOverlay);
   }, [project, currentTime]);
 
   // Format seconds to mm:ss.s

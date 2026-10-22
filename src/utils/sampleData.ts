@@ -1,4 +1,4 @@
-import { MediaClip, TextOverlay, AudioTrack, ReelProject } from '../types';
+import { MediaClip, TextOverlay, AudioTrack, ReelProject, OverlayEffect } from '../types';
 
 // Helper to generate procedural audio WAV (Lo-Fi, Upbeat, Cinematic)
 export function createSynthAudioWav(type: 'lofi' | 'upbeat' | 'cinematic', durationSec = 15): string {
@@ -9,7 +9,6 @@ export function createSynthAudioWav(type: 'lofi' | 'upbeat' | 'cinematic', durat
   const bpm = type === 'upbeat' ? 128 : type === 'lofi' ? 84 : 70;
   const beatInterval = (60 / bpm) * sampleRate;
 
-  // Synthesize rhythmic pattern & chord progression
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     const beatIndex = Math.floor(i / beatInterval);
@@ -18,26 +17,22 @@ export function createSynthAudioWav(type: 'lofi' | 'upbeat' | 'cinematic', durat
     let sample = 0;
 
     if (type === 'upbeat') {
-      // 4-on-the-floor kick
       const kickEnv = Math.exp(-posInBeat * 16);
       const kickFreq = 130 * Math.exp(-posInBeat * 25) + 45;
       const kick = Math.sin(2 * Math.PI * kickFreq * t) * kickEnv;
 
-      // Offbeat hi-hat
       const hatPos = ((i + beatInterval * 0.5) % beatInterval) / beatInterval;
       const hatEnv = Math.exp(-hatPos * 30);
       const hat = (Math.random() * 2 - 1) * hatEnv * 0.25;
 
-      // Bass synth (progression: Am - F - C - G)
       const chordIndex = Math.floor(beatIndex / 4) % 4;
-      const baseFreqs = [110, 87.31, 130.81, 98]; // A, F, C, G
+      const baseFreqs = [110, 87.31, 130.81, 98];
       const bassFreq = baseFreqs[chordIndex];
       const bass = Math.sin(2 * Math.PI * bassFreq * t) * 0.35 +
                    Math.sin(2 * Math.PI * bassFreq * 2 * t) * 0.15;
 
       sample = kick * 0.6 + hat * 0.3 + bass * 0.4;
     } else if (type === 'lofi') {
-      // Relaxed drum groove & warm Rhodes chords
       const kickHit = beatIndex % 4 === 0 || (beatIndex % 4 === 2 && posInBeat < 0.2);
       const kickEnv = kickHit ? Math.exp(-posInBeat * 10) : 0;
       const kick = Math.sin(2 * Math.PI * 65 * t) * kickEnv * 0.5;
@@ -46,25 +41,21 @@ export function createSynthAudioWav(type: 'lofi' | 'upbeat' | 'cinematic', durat
       const snareEnv = snareHit ? Math.exp(-posInBeat * 14) : 0;
       const snare = (Math.random() * 2 - 1) * snareEnv * 0.3;
 
-      // Warm mellow chords
       const chordIndex = Math.floor(beatIndex / 8) % 4;
       const chords = [
-        [220, 261.63, 329.63, 392],    // Am7
-        [174.61, 220, 261.63, 329.63], // Fmaj7
-        [196, 246.94, 293.66, 392],    // G7
-        [164.81, 196, 246.94, 329.63]  // Em7
+        [220, 261.63, 329.63, 392],
+        [174.61, 220, 261.63, 329.63],
+        [196, 246.94, 293.66, 392],
+        [164.81, 196, 246.94, 329.63]
       ];
       let chordSample = 0;
       chords[chordIndex].forEach(f => {
         chordSample += Math.sin(2 * Math.PI * f * t) * 0.08;
       });
 
-      // Vinyl crackle / hiss
       const crackle = (Math.random() * 2 - 1) * 0.015;
-
       sample = kick * 0.5 + snare * 0.4 + chordSample * 0.7 + crackle;
     } else {
-      // Cinematic chill / ambient drone with sub bass
       const tNorm = t / durationSec;
       const swell = Math.sin(Math.PI * tNorm);
       const drone = Math.sin(2 * Math.PI * 55 * t) * 0.4 +
@@ -74,26 +65,23 @@ export function createSynthAudioWav(type: 'lofi' | 'upbeat' | 'cinematic', durat
       sample = (drone + shimmer) * (0.4 + swell * 0.4);
     }
 
-    // Clamp
     buffer[i] = Math.max(-1, Math.min(1, sample));
   }
 
-  // Convert Float32Array to 16-bit PCM WAV Blob
   const wavHeader = new ArrayBuffer(44);
   const view = new DataView(wavHeader);
 
-  // RIFF identifier
   writeString(view, 0, 'RIFF');
   view.setUint32(4, 36 + numSamples * 2, true);
   writeString(view, 8, 'WAVE');
   writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // SubChunk1Size (16 for PCM)
-  view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
-  view.setUint16(22, 1, true); // NumChannels (1 = Mono)
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
   view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // ByteRate
-  view.setUint16(32, 2, true); // BlockAlign
-  view.setUint16(34, 16, true); // BitsPerSample
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
   writeString(view, 36, 'data');
   view.setUint32(40, numSamples * 2, true);
 
@@ -112,9 +100,9 @@ function writeString(view: DataView, offset: number, string: string) {
   }
 }
 
-// Generate stylized canvas imagery as fallback/instant data URLs
+// Generate stylized canvas imagery
 export function generateCanvasPattern(
-  type: 'sunset' | 'cyberpunk' | 'nature' | 'urban' | 'abstract',
+  type: 'sunset' | 'cyberpunk' | 'nature' | 'urban' | 'abstract' | 'minimal',
   width = 1080,
   height = 1920
 ): string {
@@ -134,7 +122,6 @@ export function generateCanvasPattern(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    // Glowing Sun
     ctx.beginPath();
     ctx.arc(width * 0.5, height * 0.45, 220, 0, Math.PI * 2);
     const sunGrad = ctx.createRadialGradient(width * 0.5, height * 0.45, 40, width * 0.5, height * 0.45, 220);
@@ -144,7 +131,6 @@ export function generateCanvasPattern(
     ctx.fillStyle = sunGrad;
     ctx.fill();
 
-    // Mountain silhouettes
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
     ctx.moveTo(0, height);
@@ -163,7 +149,6 @@ export function generateCanvasPattern(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    // Grid lines
     ctx.strokeStyle = 'rgba(236, 72, 153, 0.35)';
     ctx.lineWidth = 3;
     for (let x = 0; x <= width; x += 90) {
@@ -185,7 +170,6 @@ export function generateCanvasPattern(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    // Palm leaf shapes
     ctx.fillStyle = 'rgba(2, 44, 34, 0.7)';
     for (let i = 0; i < 6; i++) {
       ctx.beginPath();
@@ -199,14 +183,23 @@ export function generateCanvasPattern(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    // City skyline blocks
     ctx.fillStyle = '#020617';
     for (let i = 0; i < 12; i++) {
       const bh = 500 + Math.sin(i * 1.5) * 400;
       ctx.fillRect(i * (width / 10), height - bh, width / 11, bh);
     }
+  } else if (type === 'minimal') {
+    grad.addColorStop(0, '#2d1b4e');
+    grad.addColorStop(0.5, '#1e1b4b');
+    grad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Subtle aesthetic geometry
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(width * 0.1, height * 0.15, width * 0.8, height * 0.7);
   } else {
-    // Abstract neon particles
     grad.addColorStop(0, '#3b82f6');
     grad.addColorStop(0.5, '#8b5cf6');
     grad.addColorStop(1, '#ec4899');
@@ -217,7 +210,7 @@ export function generateCanvasPattern(
   return canvas.toDataURL('image/jpeg', 0.85);
 }
 
-// Sample Curated Photos (Unsplash High-Res with direct CORS friendly query)
+// Sample Curated Photos
 export const SAMPLE_PHOTOS = [
   {
     title: 'Neon Tokyo Night',
@@ -246,7 +239,7 @@ export const SAMPLE_PHOTOS = [
   }
 ];
 
-// Sample Curated Short Video Loops (Public CDN Royalty-Free)
+// Sample Curated Short Video Loops
 export const SAMPLE_VIDEOS = [
   {
     title: 'Neon Particle Tunnel',
@@ -265,9 +258,32 @@ export const SAMPLE_VIDEOS = [
   }
 ];
 
-// Initial Demo Project preset loaded on launch
+// Viral Auto-Captions / Hook Library
+export const VIRAL_CAPTION_HOOKS = [
+  { text: 'POV: You found your aesthetic ✨', animation: 'pop' as const },
+  { text: 'Core memories unlocked 🌊', animation: 'slide-up' as const },
+  { text: 'Golden hour hits different ☀️', animation: 'fade' as const },
+  { text: 'Late night drive thoughts 🌃', animation: 'typewriter' as const },
+  { text: '2026 Camera Roll Dump 📸', animation: 'pop' as const },
+  { text: 'Romanticize your life daily 🕊️', animation: 'slide-up' as const },
+];
+
+// Auto-Sync clips to music beat
+export function autoSyncClipsToBpm(clips: MediaClip[], bpm = 128, mode: 'fast' | 'medium' | 'chill' = 'fast'): MediaClip[] {
+  const beatSec = 60 / bpm; // e.g. 128 bpm = 0.46875s per beat
+  const targetDuration = mode === 'fast' ? beatSec : mode === 'medium' ? beatSec * 2 : beatSec * 4;
+  const roundedDur = parseFloat(targetDuration.toFixed(2));
+
+  return clips.map((clip) => ({
+    ...clip,
+    duration: roundedDur,
+    transition: mode === 'fast' ? 'flash' : 'crossfade',
+    motion: clip.motion || 'zoom-in',
+  }));
+}
+
+// Preset Projects
 export function getInitialProject(): ReelProject {
-  // Generate procedural patterns for guaranteed instant load
   const img1 = generateCanvasPattern('sunset', 1080, 1920);
   const img2 = generateCanvasPattern('cyberpunk', 1080, 1920);
   const img3 = generateCanvasPattern('nature', 1080, 1920);
@@ -280,10 +296,11 @@ export function getInitialProject(): ReelProject {
       title: 'Golden Sunset',
       src: img1,
       thumbnail: img1,
-      duration: 3.5,
+      duration: 3.2,
       transition: 'crossfade',
       filter: 'warm',
-      fit: 'cover'
+      fit: 'cover',
+      motion: 'zoom-in',
     },
     {
       id: 'clip-2',
@@ -291,10 +308,11 @@ export function getInitialProject(): ReelProject {
       title: 'Neon Cyberpunk',
       src: img2,
       thumbnail: img2,
-      duration: 3.5,
+      duration: 3.2,
       transition: 'zoom-in',
       filter: 'cyberpunk',
-      fit: 'cover'
+      fit: 'cover',
+      motion: 'zoom-out',
     },
     {
       id: 'clip-3',
@@ -305,19 +323,20 @@ export function getInitialProject(): ReelProject {
       duration: 3.0,
       transition: 'slide-left',
       filter: 'vibrant',
-      fit: 'cover'
+      fit: 'cover',
+      motion: 'pan-right',
     }
   ];
 
   const initialTexts: TextOverlay[] = [
     {
       id: 'text-1',
-      text: 'CHASING HORIZONS ✨',
-      startTime: 0.5,
-      duration: 3.0,
+      text: 'POV: GOLDEN HOUR MAGIC ✨',
+      startTime: 0.4,
+      duration: 2.8,
       x: 50,
       y: 35,
-      fontSize: 38,
+      fontSize: 36,
       fontFamily: 'Outfit',
       color: '#FFFFFF',
       backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -327,9 +346,9 @@ export function getInitialProject(): ReelProject {
     },
     {
       id: 'text-2',
-      text: 'NEON NIGHTS ⚡',
-      startTime: 3.6,
-      duration: 3.2,
+      text: 'NEON NIGHTS ⚡ 2026',
+      startTime: 3.4,
+      duration: 2.8,
       x: 50,
       y: 78,
       fontSize: 34,
@@ -337,21 +356,6 @@ export function getInitialProject(): ReelProject {
       color: '#38BDF8',
       backgroundColor: 'rgba(15, 23, 42, 0.85)',
       animation: 'slide-up',
-      align: 'center',
-      bold: true
-    },
-    {
-      id: 'text-3',
-      text: 'CREATE YOUR REEL TODAY',
-      startTime: 7.2,
-      duration: 2.8,
-      x: 50,
-      y: 50,
-      fontSize: 32,
-      fontFamily: 'Inter',
-      color: '#F43F5E',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      animation: 'fade',
       align: 'center',
       bold: true
     }
@@ -364,7 +368,8 @@ export function getInitialProject(): ReelProject {
     duration: 15,
     volume: 0.8,
     genre: 'Electronic',
-    artist: 'Reel Studio Synth'
+    artist: 'Reel Studio Synth',
+    bpm: 128,
   };
 
   return {
@@ -374,6 +379,7 @@ export function getInitialProject(): ReelProject {
     clips: initialClips,
     textOverlays: initialTexts,
     audioTrack: initialAudio,
+    globalOverlay: 'light-leak',
     fps: 30
   };
 }
