@@ -1,0 +1,507 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ReelProject, MediaClip, TextOverlay, AudioTrack, AspectRatio } from './types';
+import { getInitialProject, generateCanvasPattern, createSynthAudioWav } from './utils/sampleData';
+import { getTotalDuration } from './utils/engine';
+import { exportReel, ExportProgress } from './utils/exporter';
+import { Header } from './components/Header';
+import { MediaLibrary } from './components/MediaLibrary';
+import { PhonePreview } from './components/PhonePreview';
+import { Timeline } from './components/Timeline';
+import { InspectorPanel } from './components/InspectorPanel';
+import { ExportModal } from './components/ExportModal';
+
+export const App: React.FC = () => {
+  const [project, setProject] = useState<ReelProject>(() => getInitialProject());
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isLooping, setIsLooping] = useState<boolean>(true);
+
+  // Selection states
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+
+  // Export states
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+  const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
+
+  // Audio element for preview synchronization
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const lastTimeRef = useRef<number>(performance.now());
+  const animFrameRef = useRef<number | null>(null);
+
+  const totalDuration = getTotalDuration(project.clips);
+
+  // Set up preview audio
+  useEffect(() => {
+    if (!audioPreviewRef.current) {
+      audioPreviewRef.current = new Audio();
+    }
+    if (project.audioTrack && project.audioTrack.src) {
+      audioPreviewRef.current.src = project.audioTrack.src;
+      audioPreviewRef.current.volume = isMuted ? 0 : project.audioTrack.volume;
+    } else {
+      audioPreviewRef.current.pause();
+    }
+  }, [project.audioTrack, isMuted]);
+
+  // Main playback animation loop
+  const updatePlayback = useCallback(() => {
+    if (!isPlaying) return;
+
+    const now = performance.now();
+    const delta = (now - lastTimeRef.current) / 1000;
+    lastTimeRef.current = now;
+
+    setCurrentTime((prevTime) => {
+      let nextTime = prevTime + delta;
+
+      if (nextTime >= totalDuration) {
+        if (isLooping) {
+          nextTime = 0;
+          if (audioPreviewRef.current && project.audioTrack) {
+            audioPreviewRef.current.currentTime = 0;
+            audioPreviewRef.current.play().catch(console.warn);
+          }
+        } else {
+          setIsPlaying(false);
+          audioPreviewRef.current?.pause();
+          return totalDuration;
+        }
+      }
+      return nextTime;
+    });
+
+    animFrameRef.current = requestAnimationFrame(updatePlayback);
+  }, [isPlaying, totalDuration, isLooping, project.audioTrack]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      lastTimeRef.current = performance.now();
+      animFrameRef.current = requestAnimationFrame(updatePlayback);
+
+      if (audioPreviewRef.current && project.audioTrack && !isMuted) {
+        audioPreviewRef.current.currentTime = currentTime % (project.audioTrack.duration || 15);
+        audioPreviewRef.current.play().catch(console.warn);
+      }
+    } else {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+      audioPreviewRef.current?.pause();
+    }
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [isPlaying, updatePlayback, currentTime, project.audioTrack, isMuted]);
+
+  // Spacebar play/pause shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in input or textarea
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsPlaying((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleTogglePlay = () => {
+    setIsPlaying((prev) => !prev);
+  };
+
+  const handleSeek = (time: number) => {
+    const clamped = Math.max(0, Math.min(totalDuration, time));
+    setCurrentTime(clamped);
+    if (audioPreviewRef.current && project.audioTrack) {
+      audioPreviewRef.current.currentTime = clamped % (project.audioTrack.duration || 15);
+    }
+  };
+
+  const handleAspectRatioChange = (ratio: AspectRatio) => {
+    setProject((prev) => ({ ...prev, aspectRatio: ratio }));
+  };
+
+  // Add new text overlay at current timestamp
+  const handleAddText = () => {
+    const newText: TextOverlay = {
+      id: 'text-' + Date.now(),
+      text: 'NEW CAPTION ✨',
+      startTime: Math.max(0, parseFloat(currentTime.toFixed(1))),
+      duration: 3.0,
+      x: 50,
+      y: 50,
+      fontSize: 34,
+      fontFamily: 'Outfit',
+      color: '#FFFFFF',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      animation: 'pop',
+      align: 'center',
+      bold: true,
+    };
+
+    setProject((prev) => ({
+      ...prev,
+      textOverlays: [...prev.textOverlays, newText],
+    }));
+
+    setSelectedTextId(newText.id);
+    setSelectedClipId(null);
+  };
+
+  // Add media clip
+  const handleAddClip = (clipData: Omit<MediaClip, 'id'>) => {
+    const newClip: MediaClip = {
+      ...clipData,
+      id: 'clip-' + Date.now(),
+    };
+
+    setProject((prev) => ({
+      ...prev,
+      clips: [...prev.clips, newClip],
+    }));
+
+    setSelectedClipId(newClip.id);
+    setSelectedTextId(null);
+  };
+
+  // Move clip left or right
+  const handleMoveClip = (index: number, direction: 'left' | 'right') => {
+    setProject((prev) => {
+      const newClips = [...prev.clips];
+      const targetIndex = direction === 'left' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= newClips.length) return prev;
+
+      const temp = newClips[index];
+      newClips[index] = newClips[targetIndex];
+      newClips[targetIndex] = temp;
+      return { ...prev, clips: newClips };
+    });
+  };
+
+  // Update clip duration
+  const handleUpdateClipDuration = (id: string, delta: number) => {
+    setProject((prev) => ({
+      ...prev,
+      clips: prev.clips.map((c) =>
+        c.id === id ? { ...c, duration: Math.max(1.0, Math.min(15.0, c.duration + delta)) } : c
+      ),
+    }));
+  };
+
+  // Delete clip
+  const handleDeleteClip = (id: string) => {
+    setProject((prev) => ({
+      ...prev,
+      clips: prev.clips.filter((c) => c.id !== id),
+    }));
+    if (selectedClipId === id) setSelectedClipId(null);
+  };
+
+  // Delete text
+  const handleDeleteText = (id: string) => {
+    setProject((prev) => ({
+      ...prev,
+      textOverlays: prev.textOverlays.filter((t) => t.id !== id),
+    }));
+    if (selectedTextId === id) setSelectedTextId(null);
+  };
+
+  // Update clip properties
+  const handleUpdateClip = (updatedClip: MediaClip) => {
+    setProject((prev) => ({
+      ...prev,
+      clips: prev.clips.map((c) => (c.id === updatedClip.id ? updatedClip : c)),
+    }));
+  };
+
+  // Duplicate clip
+  const handleDuplicateClip = (clip: MediaClip) => {
+    const dup: MediaClip = {
+      ...clip,
+      id: 'clip-' + Date.now(),
+      title: `${clip.title} (Copy)`,
+    };
+    setProject((prev) => ({
+      ...prev,
+      clips: [...prev.clips, dup],
+    }));
+    setSelectedClipId(dup.id);
+  };
+
+  // Update text properties
+  const handleUpdateText = (updatedText: TextOverlay) => {
+    setProject((prev) => ({
+      ...prev,
+      textOverlays: prev.textOverlays.map((t) => (t.id === updatedText.id ? updatedText : t)),
+    }));
+  };
+
+  // Set audio track
+  const handleSetAudio = (audio: AudioTrack) => {
+    setProject((prev) => ({ ...prev, audioTrack: audio }));
+  };
+
+  // Load preset templates
+  const handleLoadTemplate = (templateName: string) => {
+    if (templateName === 'sunset') {
+      const img1 = generateCanvasPattern('sunset');
+      const img2 = generateCanvasPattern('nature');
+      const audio = createSynthAudioWav('lofi', 15);
+
+      setProject({
+        id: 'proj-sunset',
+        title: 'Golden Sunset Vibe',
+        aspectRatio: '9:16',
+        fps: 30,
+        clips: [
+          {
+            id: 's-1',
+            type: 'photo',
+            title: 'Golden Hour',
+            src: img1,
+            thumbnail: img1,
+            duration: 4.0,
+            transition: 'crossfade',
+            filter: 'warm',
+            fit: 'cover',
+          },
+          {
+            id: 's-2',
+            type: 'photo',
+            title: 'Tropical Calm',
+            src: img2,
+            thumbnail: img2,
+            duration: 4.0,
+            transition: 'fade-black',
+            filter: 'vibrant',
+            fit: 'cover',
+          },
+        ],
+        textOverlays: [
+          {
+            id: 'st-1',
+            text: 'GOLDEN HOUR MAGIC ✨',
+            startTime: 0.5,
+            duration: 3.5,
+            x: 50,
+            y: 40,
+            fontSize: 36,
+            fontFamily: 'Outfit',
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            animation: 'pop',
+            align: 'center',
+            bold: true,
+          },
+          {
+            id: 'st-2',
+            text: 'PEACE & TRANQUILITY 🌴',
+            startTime: 4.2,
+            duration: 3.5,
+            x: 50,
+            y: 75,
+            fontSize: 32,
+            fontFamily: 'Playfair Display',
+            color: '#FDE047',
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            animation: 'slide-up',
+            align: 'center',
+            bold: true,
+          },
+        ],
+        audioTrack: {
+          id: 'audio-lofi',
+          title: 'Chilled Lo-Fi Sunset',
+          src: audio,
+          duration: 15,
+          volume: 0.85,
+          genre: 'Lo-Fi',
+        },
+      });
+    } else if (templateName === 'cyberpunk') {
+      const img1 = generateCanvasPattern('cyberpunk');
+      const img2 = generateCanvasPattern('urban');
+      const audio = createSynthAudioWav('upbeat', 15);
+
+      setProject({
+        id: 'proj-cyber',
+        title: 'Cyberpunk Neon',
+        aspectRatio: '9:16',
+        fps: 30,
+        clips: [
+          {
+            id: 'c-1',
+            type: 'photo',
+            title: 'Tokyo Neon Grid',
+            src: img1,
+            thumbnail: img1,
+            duration: 3.5,
+            transition: 'zoom-in',
+            filter: 'cyberpunk',
+            fit: 'cover',
+          },
+          {
+            id: 'c-2',
+            type: 'photo',
+            title: 'Metropolis Skyline',
+            src: img2,
+            thumbnail: img2,
+            duration: 3.5,
+            transition: 'flash',
+            filter: 'noir',
+            fit: 'cover',
+          },
+        ],
+        textOverlays: [
+          {
+            id: 'ct-1',
+            text: 'FUTURE CITY ⚡ 2099',
+            startTime: 0.5,
+            duration: 3.0,
+            x: 50,
+            y: 35,
+            fontSize: 38,
+            fontFamily: 'Bebas Neue',
+            color: '#38BDF8',
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            animation: 'slide-up',
+            align: 'center',
+            bold: true,
+          },
+        ],
+        audioTrack: {
+          id: 'audio-cyber',
+          title: 'Upbeat Electro Beat',
+          src: audio,
+          duration: 15,
+          volume: 0.8,
+          genre: 'Electronic',
+        },
+      });
+    }
+
+    setCurrentTime(0);
+    setIsPlaying(false);
+  };
+
+  // Export Reel Handler
+  const handleExportReel = async () => {
+    setIsPlaying(false);
+    setIsExportOpen(true);
+    setExportedBlob(null);
+
+    try {
+      const blob = await exportReel(project, (progress) => {
+        setExportProgress(progress);
+      });
+      setExportedBlob(blob);
+    } catch (err: any) {
+      setExportProgress({
+        percentage: 0,
+        currentSecond: 0,
+        totalSeconds: totalDuration,
+        status: 'error',
+        errorMessage: err?.message || 'Failed to export reel.',
+      });
+    }
+  };
+
+  const selectedClip = project.clips.find((c) => c.id === selectedClipId) || null;
+  const selectedText = project.textOverlays.find((t) => t.id === selectedTextId) || null;
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-[#0A0D14] text-slate-100 overflow-hidden font-sans">
+      {/* Top Header */}
+      <Header
+        aspectRatio={project.aspectRatio}
+        onAspectRatioChange={handleAspectRatioChange}
+        onAddText={handleAddText}
+        onExport={handleExportReel}
+        onLoadTemplate={handleLoadTemplate}
+        totalDuration={totalDuration}
+      />
+
+      {/* Main Workspace Body */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Media Library & Uploads */}
+        <MediaLibrary
+          onAddClip={handleAddClip}
+          onSetAudio={handleSetAudio}
+          currentAudioId={project.audioTrack?.id}
+        />
+
+        {/* Center: Live Phone Preview Canvas */}
+        <PhonePreview
+          project={project}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+          onTogglePlay={handleTogglePlay}
+          onSeek={handleSeek}
+          totalDuration={totalDuration}
+          isMuted={isMuted}
+          onToggleMute={() => setIsMuted((prev) => !prev)}
+          isLooping={isLooping}
+          onToggleLoop={() => setIsLooping((prev) => !prev)}
+          onSelectText={(text) => {
+            setSelectedTextId(text.id);
+            setSelectedClipId(null);
+          }}
+        />
+
+        {/* Right: Inspector Properties Panel */}
+        <InspectorPanel
+          selectedClip={selectedClip}
+          selectedText={selectedText}
+          onUpdateClip={handleUpdateClip}
+          onUpdateText={handleUpdateText}
+          onDuplicateClip={handleDuplicateClip}
+          onDeleteClip={handleDeleteClip}
+          onDeleteText={handleDeleteText}
+          totalDuration={totalDuration}
+        />
+      </div>
+
+      {/* Bottom: Multi-Track Timeline */}
+      <Timeline
+        clips={project.clips}
+        textOverlays={project.textOverlays}
+        audioTrack={project.audioTrack}
+        currentTime={currentTime}
+        totalDuration={totalDuration}
+        onSeek={handleSeek}
+        selectedClipId={selectedClipId}
+        onSelectClip={(id) => {
+          setSelectedClipId(id);
+          if (id) setSelectedTextId(null);
+        }}
+        selectedTextId={selectedTextId}
+        onSelectText={(id) => {
+          setSelectedTextId(id);
+          if (id) setSelectedClipId(null);
+        }}
+        onMoveClip={handleMoveClip}
+        onUpdateClipDuration={handleUpdateClipDuration}
+        onDeleteClip={handleDeleteClip}
+        onDeleteText={handleDeleteText}
+      />
+
+      {/* Export Progress / Done Modal */}
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        progress={exportProgress}
+        exportedBlob={exportedBlob}
+      />
+    </div>
+  );
+};
