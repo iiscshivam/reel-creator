@@ -378,6 +378,8 @@ export function getInitialProject(): ReelProject {
     aspectRatio: '9:16',
     clips: initialClips,
     textOverlays: initialTexts,
+    stickerOverlays: [],
+    backgroundColor: '#0A0D14',
     audioTrack: initialAudio,
     globalOverlay: 'light-leak',
     fps: 30

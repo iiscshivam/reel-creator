@@ -1,4 +1,4 @@
-import { AspectRatio, FilterType, MediaClip, MotionEffect, OverlayEffect, TextOverlay, TransitionType } from '../types';
+import { AspectRatio, FilterType, MediaClip, MotionEffect, OverlayEffect, StickerOverlay, TextOverlay, TransitionType } from '../types';
 
 export interface CanvasDimensions {
   width: number;
@@ -316,20 +316,50 @@ export function renderFrame(
   textOverlays: TextOverlay[],
   currentTime: number,
   dimensions: CanvasDimensions,
-  globalOverlay?: OverlayEffect
+  globalOverlay?: OverlayEffect,
+  stickerOverlays?: StickerOverlay[],
+  backgroundColor?: string,
+  backgroundGradient?: string[]
 ) {
   const { width, height } = dimensions;
 
   ctx.save();
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = '#0A0D14';
-  ctx.fillRect(0, 0, width, height);
+
+  // Render background (gradient, solid color, or dark default)
+  if (backgroundGradient && backgroundGradient.length > 1) {
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    backgroundGradient.forEach((c, idx) => {
+      grad.addColorStop(idx / (backgroundGradient.length - 1), c);
+    });
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  } else if (backgroundColor) {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, width, height);
+  } else {
+    ctx.fillStyle = '#0A0D14';
+    ctx.fillRect(0, 0, width, height);
+  }
 
   if (clips.length === 0) {
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = '#94a3b8';
     ctx.font = '24px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('No clips added to timeline', width / 2, height / 2);
+
+    if (textOverlays) {
+      for (const textItem of textOverlays) {
+        if (currentTime >= textItem.startTime && currentTime <= textItem.startTime + textItem.duration) {
+          renderTextOverlay(ctx, textItem, currentTime, width, height);
+        }
+      }
+    }
+    if (stickerOverlays) {
+      for (const sticker of stickerOverlays) {
+        renderStickerOverlay(ctx, sticker, currentTime, width, height);
+      }
+    }
     ctx.restore();
     return;
   }
@@ -375,10 +405,25 @@ export function renderFrame(
       const video = mediaCache.getVideo(targetClip.src);
       if (video) {
         const speed = targetClip.speed || 1;
-        const targetVideoTime = (timeInClip * speed) % (video.duration || targetClip.duration);
+        const trimStart = targetClip.trimStart || 0;
+        const trimEnd =
+          targetClip.trimEnd && targetClip.trimEnd > trimStart
+            ? targetClip.trimEnd
+            : (video.duration || targetClip.duration);
+        const playableDuration = Math.max(0.1, trimEnd - trimStart);
+        const targetVideoTime = trimStart + ((timeInClip * speed) % playableDuration);
+
         if (Math.abs(video.currentTime - targetVideoTime) > 0.15) {
           video.currentTime = targetVideoTime;
         }
+
+        video.muted = targetClip.muted || false;
+        const vol = targetClip.volume !== undefined ? targetClip.volume : 1;
+        video.volume = Math.max(0, Math.min(1, vol > 1 ? vol / 100 : vol));
+        if (targetClip.speed) {
+          video.playbackRate = targetClip.speed;
+        }
+
         drawMediaFitted(
           targetCtx,
           video,
@@ -492,6 +537,13 @@ export function renderFrame(
     }
   }
 
+  // Draw Sticker Overlays
+  if (stickerOverlays) {
+    for (const sticker of stickerOverlays) {
+      renderStickerOverlay(ctx, sticker, currentTime, width, height);
+    }
+  }
+
   ctx.restore();
 }
 
@@ -539,8 +591,8 @@ function renderTextOverlay(
 
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-  const targetX = (item.x / 100) * canvasWidth;
-  const targetY = (item.y / 100) * canvasHeight + offsetY;
+  const targetX = (item.x <= 1 && item.x > 0 ? item.x * canvasWidth : (item.x / 100) * canvasWidth);
+  const targetY = (item.y <= 1 && item.y > 0 ? item.y * canvasHeight : (item.y / 100) * canvasHeight) + offsetY;
 
   const scaleFactor = canvasWidth / 720;
   const fontSize = Math.round(item.fontSize * scaleFactor);
@@ -587,5 +639,65 @@ function renderTextOverlay(
   ctx.fillStyle = item.color;
   ctx.fillText(displayText, 0, 0);
 
+  // Render Underline
+  if (item.underline) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = Math.max(2, Math.round(fontSize / 14));
+    let startX = 0;
+    let endX = textWidth;
+    if (item.align === 'center') {
+      startX = -textWidth / 2;
+      endX = textWidth / 2;
+    } else if (item.align === 'right') {
+      startX = -textWidth;
+      endX = 0;
+    }
+    const underlineY = fontSize * 0.45;
+    ctx.moveTo(startX, underlineY);
+    ctx.lineTo(endX, underlineY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// Render emoji sticker overlay with rotation & scaling
+export function renderStickerOverlay(
+  ctx: CanvasRenderingContext2D,
+  item: StickerOverlay,
+  currentTime: number,
+  canvasWidth: number,
+  canvasHeight: number
+) {
+  if (item.startTime !== undefined && item.duration !== undefined) {
+    if (currentTime < item.startTime || currentTime > item.startTime + item.duration) {
+      return;
+    }
+  }
+
+  ctx.save();
+  const targetX = (item.x <= 1 ? item.x : item.x / 100) * canvasWidth;
+  const targetY = (item.y <= 1 ? item.y : item.y / 100) * canvasHeight;
+  const scaleFactor = canvasWidth / 720;
+  const size = Math.round((item.size || 60) * scaleFactor);
+
+  ctx.translate(targetX, targetY);
+  if (item.rotation) {
+    ctx.rotate((item.rotation * Math.PI) / 180);
+  }
+
+  ctx.font = `${size}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+
+  ctx.fillText(item.emoji, 0, 0);
   ctx.restore();
 }

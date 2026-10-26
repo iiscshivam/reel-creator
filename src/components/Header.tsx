@@ -1,6 +1,6 @@
 import React from 'react';
 import { AspectRatio, OverlayEffect } from '../types';
-import { Film, Download, Type, Sparkles, Smartphone, Square, Monitor, Zap, Layers, Music } from 'lucide-react';
+import { Film, Download, Type, Sparkles, Smartphone, Square, Monitor, Zap, Layers, Music, Undo2, Redo2 } from 'lucide-react';
 
 interface HeaderProps {
   aspectRatio: AspectRatio;
@@ -13,6 +13,10 @@ interface HeaderProps {
   onOpenOverlayModal: () => void;
   globalOverlay?: OverlayEffect;
   totalDuration: number;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,6 +30,10 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenOverlayModal,
   globalOverlay = 'none',
   totalDuration,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }) => {
   return (
     <header className="h-16 border-b border-slate-800 bg-[#0B0F17]/95 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
@@ -145,8 +153,36 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Actions: Add Text, Export, GitHub */}
+      {/* Right Actions: Undo/Redo, Add Text, Export, GitHub */}
       <div className="flex items-center gap-2">
+        {/* Undo / Redo */}
+        <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`p-1.5 rounded-md transition ${
+              canUndo
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 cursor-not-allowed'
+            }`}
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`p-1.5 rounded-md transition ${
+              canRedo
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 cursor-not-allowed'
+            }`}
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
         <button
           onClick={onAddText}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow-sm"

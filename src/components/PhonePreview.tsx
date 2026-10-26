@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { ReelProject, TextOverlay } from '../types';
+import React, { useRef, useEffect, useState } from 'react';
+import { ReelProject, TextOverlay, StickerOverlay } from '../types';
 import { getCanvasDimensions, renderFrame } from '../utils/engine';
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Repeat } from 'lucide-react';
 
@@ -15,6 +15,9 @@ interface PhonePreviewProps {
   isLooping: boolean;
   onToggleLoop: () => void;
   onSelectText?: (text: TextOverlay) => void;
+  onUpdateTextPosition?: (id: string, x: number, y: number) => void;
+  onSelectSticker?: (sticker: StickerOverlay) => void;
+  onUpdateStickerPosition?: (id: string, x: number, y: number) => void;
 }
 
 export const PhonePreview: React.FC<PhonePreviewProps> = ({
@@ -28,8 +31,16 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   onToggleMute,
   isLooping,
   onToggleLoop,
+  onSelectText,
+  onUpdateTextPosition,
+  onSelectSticker,
+  onUpdateStickerPosition,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragTargetRef = useRef<{ type: 'text' | 'sticker'; id: string } | null>(null);
+  const dragStartPosRef = useRef<{ clientX: number; clientY: number } | null>(null);
+  const hasMovedRef = useRef<boolean>(false);
 
   // Sync canvas dimensions and render active frame
   useEffect(() => {
@@ -45,8 +56,147 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
       canvas.height = dims.height;
     }
 
-    renderFrame(ctx, project.clips, project.textOverlays, currentTime, dims, project.globalOverlay);
+    renderFrame(
+      ctx,
+      project.clips,
+      project.textOverlays,
+      currentTime,
+      dims,
+      project.globalOverlay,
+      project.stickerOverlays,
+      project.backgroundColor,
+      project.backgroundGradient
+    );
   }, [project, currentTime]);
+
+  // Pointer Down: Hit test stickers and text overlays
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clickCanvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const clickCanvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    dragStartPosRef.current = { clientX: e.clientX, clientY: e.clientY };
+    hasMovedRef.current = false;
+
+    // 1. Check Sticker Overlays first (top-most first)
+    if (project.stickerOverlays && project.stickerOverlays.length > 0) {
+      for (let i = project.stickerOverlays.length - 1; i >= 0; i--) {
+        const sticker = project.stickerOverlays[i];
+        if (sticker.startTime !== undefined && sticker.duration !== undefined) {
+          if (currentTime < sticker.startTime || currentTime > sticker.startTime + sticker.duration) {
+            continue;
+          }
+        }
+        const sx = (sticker.x <= 1 ? sticker.x : sticker.x / 100) * canvas.width;
+        const sy = (sticker.y <= 1 ? sticker.y : sticker.y / 100) * canvas.height;
+        const scaleFactor = canvas.width / 720;
+        const size = (sticker.size || 60) * scaleFactor;
+        const dist = Math.hypot(clickCanvasX - sx, clickCanvasY - sy);
+
+        if (dist <= size * 0.8 + 15) {
+          dragTargetRef.current = { type: 'sticker', id: sticker.id };
+          setIsDragging(true);
+          onSelectSticker?.(sticker);
+          canvas.setPointerCapture(e.pointerId);
+          return;
+        }
+      }
+    }
+
+    // 2. Check Text Overlays (top-most visible first)
+    if (project.textOverlays && project.textOverlays.length > 0) {
+      for (let i = project.textOverlays.length - 1; i >= 0; i--) {
+        const text = project.textOverlays[i];
+        if (currentTime < text.startTime || currentTime > text.startTime + text.duration) {
+          continue;
+        }
+
+        const tx = (text.x <= 1 ? text.x : text.x / 100) * canvas.width;
+        const ty = (text.y <= 1 ? text.y : text.y / 100) * canvas.height;
+        const scaleFactor = canvas.width / 720;
+        const fontSize = Math.round(text.fontSize * scaleFactor);
+
+        let textW = text.text.length * fontSize * 0.6;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.font = `${text.italic ? 'italic ' : ''}${text.bold ? 'bold ' : ''}${fontSize}px "${text.fontFamily}", sans-serif`;
+          textW = ctx.measureText(text.text).width;
+        }
+
+        const padX = 30 * scaleFactor;
+        const padY = 24 * scaleFactor;
+        let minX = tx - textW / 2 - padX;
+        let maxX = tx + textW / 2 + padX;
+        if (text.align === 'left') {
+          minX = tx - padX;
+          maxX = tx + textW + padX;
+        } else if (text.align === 'right') {
+          minX = tx - textW - padX;
+          maxX = tx + padX;
+        }
+        const minY = ty - fontSize * 0.9 - padY;
+        const maxY = ty + fontSize * 0.9 + padY;
+
+        if (clickCanvasX >= minX && clickCanvasX <= maxX && clickCanvasY >= minY && clickCanvasY <= maxY) {
+          dragTargetRef.current = { type: 'text', id: text.id };
+          setIsDragging(true);
+          onSelectText?.(text);
+          canvas.setPointerCapture(e.pointerId);
+          return;
+        }
+      }
+    }
+
+    dragTargetRef.current = null;
+  };
+
+  // Pointer Move: Update position of dragged item
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!dragTargetRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (dragStartPosRef.current) {
+      const dx = Math.abs(e.clientX - dragStartPosRef.current.clientX);
+      const dy = Math.abs(e.clientY - dragStartPosRef.current.clientY);
+      if (dx > 3 || dy > 3) {
+        hasMovedRef.current = true;
+      }
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const normX = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
+    const normY = Math.max(0.05, Math.min(0.95, (e.clientY - rect.top) / rect.height));
+
+    if (dragTargetRef.current.type === 'text') {
+      onUpdateTextPosition?.(dragTargetRef.current.id, normX, normY);
+    } else if (dragTargetRef.current.type === 'sticker') {
+      onUpdateStickerPosition?.(dragTargetRef.current.id, normX, normY);
+    }
+  };
+
+  // Pointer Up: Release capture and handle click vs drag
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (canvas && canvas.hasPointerCapture(e.pointerId)) {
+      canvas.releasePointerCapture(e.pointerId);
+    }
+
+    const hadTarget = dragTargetRef.current !== null;
+    const moved = hasMovedRef.current;
+
+    dragTargetRef.current = null;
+    dragStartPosRef.current = null;
+    setIsDragging(false);
+
+    // If tapped empty space without dragging, toggle play
+    if (!hadTarget && !moved) {
+      onTogglePlay();
+    }
+  };
 
   // Format seconds to mm:ss.s
   const formatTime = (seconds: number) => {
@@ -94,8 +244,12 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
               {/* Live Render Canvas */}
               <canvas
                 ref={canvasRef}
-                className="w-full h-full object-cover cursor-pointer"
-                onClick={onTogglePlay}
+                className={`w-full h-full object-cover touch-none ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-pointer'
+                }`}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
               />
 
               {/* Play/Pause HUD overlay when paused or hover */}

@@ -1,5 +1,5 @@
-import { ReelProject } from '../types';
-import { getCanvasDimensions, getTotalDuration, renderFrame, mediaCache } from './engine';
+import { ReelProject, ExportResolution, AspectRatio } from '../types';
+import { CanvasDimensions, getTotalDuration, renderFrame, mediaCache } from './engine';
 import confetti from 'canvas-confetti';
 
 export interface ExportProgress {
@@ -10,9 +10,50 @@ export interface ExportProgress {
   errorMessage?: string;
 }
 
+export function getExportDimensions(
+  aspectRatio: AspectRatio,
+  resolution: ExportResolution = '720p'
+): CanvasDimensions {
+  switch (resolution) {
+    case '480p':
+      switch (aspectRatio) {
+        case '9:16':
+          return { width: 480, height: 854 };
+        case '1:1':
+          return { width: 480, height: 480 };
+        case '16:9':
+          return { width: 854, height: 480 };
+      }
+      break;
+
+    case '1080p':
+      switch (aspectRatio) {
+        case '9:16':
+          return { width: 1080, height: 1920 };
+        case '1:1':
+          return { width: 1080, height: 1080 };
+        case '16:9':
+          return { width: 1920, height: 1080 };
+      }
+      break;
+
+    case '720p':
+    default:
+      switch (aspectRatio) {
+        case '9:16':
+          return { width: 720, height: 1280 };
+        case '1:1':
+          return { width: 720, height: 720 };
+        case '16:9':
+          return { width: 1280, height: 720 };
+      }
+  }
+}
+
 export async function exportReel(
   project: ReelProject,
-  onProgress: (progress: ExportProgress) => void
+  onProgress: (progress: ExportProgress) => void,
+  resolution: ExportResolution = '720p'
 ): Promise<Blob> {
   const totalDuration = getTotalDuration(project.clips);
   if (totalDuration <= 0) {
@@ -33,7 +74,7 @@ export async function exportReel(
     }
   }
 
-  const dimensions = getCanvasDimensions(project.aspectRatio);
+  const dimensions = getExportDimensions(project.aspectRatio, resolution);
   const canvas = document.createElement('canvas');
   canvas.width = dimensions.width;
   canvas.height = dimensions.height;
@@ -90,9 +131,13 @@ export async function exportReel(
     audioDestination.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
   }
 
+  let videoBitrate = 8000000;
+  if (resolution === '1080p') videoBitrate = 16000000;
+  else if (resolution === '480p') videoBitrate = 4000000;
+
   const recorder = new MediaRecorder(stream, {
     mimeType: selectedMimeType,
-    videoBitsPerSecond: 8000000, // 8 Mbps high quality
+    videoBitsPerSecond: videoBitrate,
   });
 
   const recordedChunks: Blob[] = [];
@@ -162,7 +207,17 @@ export async function exportReel(
     const exportTimer = setInterval(() => {
       elapsed += 1 / fps;
 
-      renderFrame(ctx, project.clips, project.textOverlays, elapsed, dimensions, project.globalOverlay);
+      renderFrame(
+        ctx,
+        project.clips,
+        project.textOverlays,
+        elapsed,
+        dimensions,
+        project.globalOverlay,
+        project.stickerOverlays,
+        project.backgroundColor,
+        project.backgroundGradient
+      );
 
       const percent = Math.min(99, Math.round((elapsed / totalDuration) * 100));
       onProgress({

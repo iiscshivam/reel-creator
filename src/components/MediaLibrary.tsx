@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { MediaClip, AudioTrack, TextAnimation } from '../types';
 import { SAMPLE_PHOTOS, SAMPLE_VIDEOS, VIRAL_CAPTION_HOOKS, createSynthAudioWav, generateCanvasPattern } from '../utils/sampleData';
-import { Upload, Image as ImageIcon, Video, Music, Plus, Play, Pause, Sparkles, MessageSquare, ChevronLeft, ChevronRight, Folder } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, Music, Plus, Play, Pause, Sparkles, MessageSquare, ChevronLeft, ChevronRight, Folder, Smile } from 'lucide-react';
 
 interface MediaLibraryProps {
   onAddClip: (clip: Omit<MediaClip, 'id'>) => void;
   onSetAudio: (audio: AudioTrack) => void;
   onAddCaption?: (text: string, animation: TextAnimation) => void;
+  onAddSticker?: (emoji: string) => void;
   currentAudioId?: string;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -16,11 +17,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onAddClip,
   onSetAudio,
   onAddCaption,
+  onAddSticker,
   currentAudioId,
   isCollapsed,
   onToggleCollapse,
 }) => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'photos' | 'videos' | 'audio' | 'captions'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'photos' | 'videos' | 'audio' | 'captions' | 'stickers'>('upload');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -166,6 +168,16 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
           >
             <MessageSquare className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => {
+              setActiveTab('stickers');
+              onToggleCollapse();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Emoji Stickers"
+          >
+            <Smile className="w-4 h-4" />
+          </button>
         </div>
       </div>
     );
@@ -192,7 +204,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="grid grid-cols-5 p-1 gap-0.5 border-b border-slate-800 bg-slate-900/40 shrink-0">
+      <div className="grid grid-cols-6 p-1 gap-0.5 border-b border-slate-800 bg-slate-900/40 shrink-0">
         <button
           onClick={() => setActiveTab('upload')}
           className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
@@ -247,6 +259,17 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         >
           <MessageSquare className="w-3 h-3 mb-0.5" />
           Hooks
+        </button>
+        <button
+          onClick={() => setActiveTab('stickers')}
+          className={`flex flex-col items-center py-1.5 px-0.5 rounded text-[9px] font-bold transition ${
+            activeTab === 'stickers'
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Smile className="w-3 h-3 mb-0.5" />
+          Stickers
         </button>
       </div>
 
@@ -487,6 +510,30 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 <Plus className="w-3 h-3 text-slate-400 shrink-0" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* TAB 6: STICKERS */}
+        {activeTab === 'stickers' && (
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Emoji Stickers
+            </span>
+            <p className="text-[9px] text-slate-500">
+              Click an emoji to add it as a sticker onto your reel.
+            </p>
+            <div className="grid grid-cols-4 gap-2 pt-1">
+              {['🔥', '❤️', '✨', '💯', '🎵', '🌟', '💥', '🎉', '👀', '💫', '⚡', '🚀', '😍', '👏', '👑', '🌈'].map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => onAddSticker?.(emoji)}
+                  className="aspect-square flex items-center justify-center text-2xl bg-slate-900 border border-slate-800 hover:border-pink-500 hover:scale-115 rounded-xl transition shadow"
+                  title={`Add ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

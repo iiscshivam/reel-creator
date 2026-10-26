@@ -23,9 +23,12 @@ export interface MediaClip {
   filter: FilterType;
   fit: 'cover' | 'contain';
   motion?: MotionEffect; // Ken Burns dynamic photo motion
-  volume?: number; // 0 to 1 for video clips
+  volume?: number; // 0 to 1 for video clips (or 0-100)
+  muted?: boolean;
   speed?: number; // 0.5, 1, 1.5, 2
   rotation?: number; // 0, 90, 180, 270
+  trimStart?: number; // in seconds
+  trimEnd?: number; // in seconds
 }
 
 export interface TextOverlay {
@@ -43,7 +46,21 @@ export interface TextOverlay {
   align: 'left' | 'center' | 'right';
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
 }
+
+export interface StickerOverlay {
+  id: string;
+  emoji: string;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  size: number; // px
+  rotation: number; // degrees
+  startTime?: number;
+  duration?: number;
+}
+
+export type ExportResolution = '480p' | '720p' | '1080p';
 
 export interface AudioTrack {
   id: string;
@@ -62,7 +79,11 @@ export interface ReelProject {
   aspectRatio: AspectRatio;
   clips: MediaClip[];
   textOverlays: TextOverlay[];
+  stickerOverlays?: StickerOverlay[];
+  backgroundColor?: string;
+  backgroundGradient?: string[];
   audioTrack: AudioTrack | null;
   globalOverlay?: OverlayEffect;
   fps: number;
 }
+
