@@ -208,102 +208,103 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   const getAspectRatioClasses = () => {
     switch (project.aspectRatio) {
       case '9:16':
-        return 'h-[min(480px,calc(100vh-270px))] aspect-[9/16] max-w-[85vw]';
+        return 'h-full max-h-[calc(100%_-_48px)] aspect-[9/16]';
       case '1:1':
-        return 'h-[min(420px,calc(100vh-270px))] aspect-square max-w-[85vw]';
+        return 'h-full max-h-[calc(100%_-_48px)] aspect-square';
       case '16:9':
-        return 'w-[min(640px,calc(100vw-360px))] aspect-video max-h-[calc(100vh-270px)]';
+        return 'w-full max-w-[calc(100%_-_32px)] aspect-video max-h-[calc(100%_-_48px)]';
     }
   };
 
   return (
-    <div className="flex-1 w-full h-full min-h-0 bg-[#0A0D14] flex flex-col items-center justify-center p-2 relative select-none overflow-hidden">
+    <main
+      className="flex-1 w-full h-full min-h-0 bg-[#0E0E0E] flex flex-col items-center justify-center p-4 relative select-none overflow-hidden"
+      aria-label="Video Preview Canvas"
+    >
       {/* Background ambient lighting */}
       <div className="absolute w-[450px] h-[450px] rounded-full bg-pink-500/10 blur-[130px] pointer-events-none -top-16 left-1/3" />
       <div className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[130px] pointer-events-none -bottom-16 right-1/3" />
 
       {/* Centered Phone Device Container */}
-      <div className="flex flex-col items-center justify-center max-h-full">
+      <div className="flex flex-col items-center justify-center w-full h-full min-h-0">
         {/* Smartphone Device Frame */}
-        <div className="relative group flex items-center justify-center shrink-0">
-          <div
-            className={`relative ${getAspectRatioClasses()} rounded-[36px] p-2 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-2xl shadow-black/90 border border-slate-700/60 flex flex-col transition-all duration-200`}
-          >
-            {/* Inner bezel */}
-            <div className="relative w-full h-full rounded-[28px] overflow-hidden bg-black flex items-center justify-center border border-black shadow-inner">
-              {/* Dynamic Island / Camera Notch */}
-              {project.aspectRatio === '9:16' && (
-                <div className="absolute top-2 z-20 flex items-center justify-center">
-                  <div className="h-3.5 w-16 bg-black/90 border border-slate-800 rounded-full flex items-center justify-between px-1.5 shadow">
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-900 border border-slate-700" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-950/80" />
-                  </div>
+        <div className={`relative ${getAspectRatioClasses()} rounded-[36px] p-2 bg-gradient-to-b from-[#2A2A2A] via-[#1C1C1C] to-[#141414] shadow-2xl shadow-black/90 border border-[#333333] flex flex-col transition-all duration-200 shrink-0`}>
+          {/* Inner bezel */}
+          <div className="relative w-full h-full rounded-[28px] overflow-hidden bg-black flex items-center justify-center border border-black shadow-inner">
+            {/* Dynamic Island / Camera Notch */}
+            {project.aspectRatio === '9:16' && (
+              <div className="absolute top-2 z-20 flex items-center justify-center pointer-events-none">
+                <div className="h-3.5 w-16 bg-black/90 border border-[#2A2A2A] rounded-full flex items-center justify-between px-1.5 shadow">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#1C1C1C] border border-[#333333]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-950/80" />
                 </div>
-              )}
-
-              {/* Live Render Canvas */}
-              <canvas
-                ref={canvasRef}
-                className={`w-full h-full object-cover touch-none ${
-                  isDragging ? 'cursor-grabbing' : 'cursor-pointer'
-                }`}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-              />
-
-              {/* Play/Pause HUD overlay when paused or hover */}
-              <div
-                className={`absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-200 pointer-events-none ${
-                  !isPlaying ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-                }`}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTogglePlay();
-                  }}
-                  className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/30 flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition pointer-events-auto"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5 fill-white" />
-                  ) : (
-                    <Play className="w-5 h-5 fill-white ml-0.5" />
-                  )}
-                </button>
               </div>
+            )}
 
-              {/* Social Reel UI Mockup Overlay */}
-              {project.aspectRatio === '9:16' && (
-                <div className="absolute right-2.5 bottom-10 flex flex-col items-center gap-2.5 z-10 pointer-events-none opacity-80">
-                  <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
-                    ❤️
-                  </div>
-                  <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
-                    💬
-                  </div>
-                  <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
-                    ↗️
-                  </div>
-                </div>
-              )}
+            {/* Live Render Canvas */}
+            <canvas
+              ref={canvasRef}
+              className={`w-full h-full object-cover touch-none ${
+                isDragging ? 'cursor-grabbing' : 'cursor-pointer'
+              }`}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            />
+
+            {/* Play/Pause HUD overlay when paused or hover */}
+            <div
+              className={`absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-200 pointer-events-none ${
+                !isPlaying ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+              }`}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePlay();
+                }}
+                className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/30 flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition pointer-events-auto"
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 fill-white" />
+                ) : (
+                  <Play className="w-5 h-5 fill-white ml-0.5" />
+                )}
+              </button>
             </div>
+
+            {/* Social Reel UI Mockup Overlay */}
+            {project.aspectRatio === '9:16' && (
+              <div className="absolute right-2.5 bottom-10 flex flex-col items-center gap-2.5 z-10 pointer-events-none opacity-80">
+                <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
+                  ❤️
+                </div>
+                <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
+                  💬
+                </div>
+                <div className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-[11px] font-bold shadow">
+                  ↗️
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Transport Bar Controls below Phone */}
-        <div className="mt-2 flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-xl backdrop-blur-md shadow-lg z-20 shrink-0">
+        <div className="mt-2.5 flex items-center gap-3 bg-[#141414]/95 border border-[#2A2A2A] px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-lg z-20 shrink-0">
           <button
             onClick={() => onSeek(0)}
-            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+            className="p-1 text-slate-400 hover:text-white rounded hover:bg-[#222222] transition"
             title="Rewind to start"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
           <button
             onClick={onTogglePlay}
             className="w-6 h-6 rounded-full bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center shadow-md shadow-pink-500/30 transition active:scale-95"
+            title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
               <Pause className="w-3 h-3 fill-white" />
@@ -319,7 +320,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             <span>{formatTime(totalDuration)}</span>
           </div>
 
-          <div className="h-3 w-px bg-slate-800" />
+          <div className="h-3 w-px bg-[#2A2A2A]" />
 
           {/* Mute Toggle */}
           <button
@@ -327,11 +328,11 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             className={`p-1 rounded transition ${
               isMuted
                 ? 'text-rose-400 hover:text-rose-300 bg-rose-500/10'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-400 hover:text-white hover:bg-[#222222]'
             }`}
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
           >
-            {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
           </button>
 
           {/* Loop Toggle */}
@@ -340,14 +341,16 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             className={`p-1 rounded transition ${
               isLooping
                 ? 'text-pink-400 hover:text-pink-300 bg-pink-500/10'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-400 hover:text-white hover:bg-[#222222]'
             }`}
             title={isLooping ? 'Disable Loop' : 'Enable Loop'}
           >
-            <Repeat className="w-3 h-3" />
+            <Repeat className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
+
+export default PhonePreview;

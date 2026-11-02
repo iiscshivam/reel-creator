@@ -62,9 +62,9 @@ export const Timeline: React.FC<TimelineProps> = ({
   }
 
   return (
-    <div className="h-full w-full bg-[#0B0F17] flex flex-col select-none overflow-hidden">
+    <footer className="h-full w-full bg-[#141414] flex flex-col select-none overflow-hidden" aria-label="Timeline Tracks">
       {/* Timeline Header Bar */}
-      <div className="h-7 px-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
+      <div className="h-7 px-3 border-b border-[#2A2A2A] bg-[#181818] flex items-center justify-between text-xs text-slate-400 shrink-0">
         <div className="flex items-center gap-2">
           <span className="font-bold uppercase tracking-wider text-[10px] text-slate-300 flex items-center gap-1">
             <Sliders className="w-3 h-3 text-pink-400" />
@@ -91,7 +91,7 @@ export const Timeline: React.FC<TimelineProps> = ({
           {onOpenAudioModal && (
             <button
               onClick={onOpenAudioModal}
-              className="text-[10px] font-semibold text-pink-400 hover:text-pink-300 flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/80"
+              className="text-[10px] font-semibold text-pink-400 hover:text-pink-300 flex items-center gap-1 bg-[#222222] hover:bg-[#2A2A2A] px-2 py-0.5 rounded border border-[#2A2A2A] transition"
             >
               <Music className="w-2.5 h-2.5" />
               {audioTrack ? 'Change Audio' : '+ Audio'}
@@ -100,7 +100,7 @@ export const Timeline: React.FC<TimelineProps> = ({
           {onOpenOverlayModal && (
             <button
               onClick={onOpenOverlayModal}
-              className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/80"
+              className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-[#222222] hover:bg-[#2A2A2A] px-2 py-0.5 rounded border border-[#2A2A2A] transition"
             >
               <Layers className="w-2.5 h-2.5" />
               Overlays
@@ -117,14 +117,14 @@ export const Timeline: React.FC<TimelineProps> = ({
       >
         <div style={{ width: `${timelineWidth}px` }} className="relative h-full py-1.5 px-3">
           {/* Time Ruler */}
-          <div className="h-5 border-b border-slate-800/80 relative flex items-end mb-1 select-none">
+          <div className="h-5 border-b border-[#2A2A2A] relative flex items-end mb-1 select-none">
             {rulerTicks.map((sec) => (
               <div
                 key={sec}
                 style={{ left: `${sec * pxPerSec}px` }}
                 className="absolute flex flex-col items-start"
               >
-                <div className="w-px h-1.5 bg-slate-700" />
+                <div className="w-px h-1.5 bg-[#333333]" />
                 <span className="text-[9px] font-mono text-slate-500 mt-0.5">
                   {sec}s
                 </span>
@@ -142,8 +142,8 @@ export const Timeline: React.FC<TimelineProps> = ({
             </div>
           </div>
 
-          {/* TRACK 1: TEXT OVERLAYS */}
-          <div className="h-7 mb-1.5 relative flex items-center bg-slate-900/40 rounded-lg border border-slate-800/50 px-1">
+          {/* TRACK 1: TEXT OVERLAYS (h-7) */}
+          <div className="h-7 mb-1.5 relative flex items-center bg-[#181818] rounded-lg border border-[#2A2A2A] px-1">
             <div className="w-5 shrink-0 flex items-center justify-center text-slate-500">
               <Type className="w-3 h-3 text-pink-400" />
             </div>
@@ -187,8 +187,8 @@ export const Timeline: React.FC<TimelineProps> = ({
             </div>
           </div>
 
-          {/* TRACK 2: MEDIA CLIPS (PHOTOS & VIDEOS) */}
-          <div className="h-16 mb-1.5 relative flex items-center bg-slate-900/60 rounded-xl border border-slate-800/80 p-1 gap-1">
+          {/* TRACK 2: MEDIA CLIPS (PHOTOS & VIDEOS) — increased to h-20 */}
+          <div className="h-20 mb-1.5 relative flex items-center bg-[#181818] rounded-xl border border-[#2A2A2A] p-1 gap-1">
             <div className="w-5 shrink-0 flex flex-col items-center justify-center text-slate-500">
               <Film className="w-3.5 h-3.5 text-rose-400" />
             </div>
@@ -207,17 +207,17 @@ export const Timeline: React.FC<TimelineProps> = ({
                       onSelectText(null);
                     }}
                     style={{ width: `${width}px` }}
-                    className={`h-full rounded-lg overflow-hidden relative group cursor-pointer border-2 transition-all shrink-0 flex flex-col justify-between p-1 ${
+                    className={`h-full rounded-lg overflow-hidden relative group cursor-pointer border-2 transition-all shrink-0 flex flex-col justify-between p-1.5 ${
                       isSelected
-                        ? 'border-pink-500 bg-slate-800 ring-2 ring-pink-500/40 shadow-lg'
-                        : 'border-slate-700/80 bg-slate-800/80 hover:border-slate-500'
+                        ? 'border-pink-500 bg-[#262626] ring-2 ring-pink-500/40 shadow-lg'
+                        : 'border-[#2A2A2A] bg-[#222222] hover:border-[#333333]'
                     }`}
                   >
                     {/* Background Thumbnail */}
                     <img
                       src={clip.thumbnail}
                       alt={clip.title}
-                      className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 transition pointer-events-none"
+                      className="absolute inset-0 w-full h-full object-cover opacity-35 group-hover:opacity-45 transition pointer-events-none"
                     />
 
                     {/* Clip Top Bar */}
@@ -239,7 +239,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                             onMoveClip(index, 'left');
                           }}
                           disabled={index === 0}
-                          className="p-0.5 rounded bg-black/50 hover:bg-black text-slate-300 disabled:opacity-30"
+                          className="p-0.5 rounded bg-black/60 hover:bg-black text-slate-300 disabled:opacity-30"
                           title="Move clip left"
                         >
                           <ChevronLeft className="w-2.5 h-2.5" />
@@ -250,7 +250,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                             onMoveClip(index, 'right');
                           }}
                           disabled={index === clips.length - 1}
-                          className="p-0.5 rounded bg-black/50 hover:bg-black text-slate-300 disabled:opacity-30"
+                          className="p-0.5 rounded bg-black/60 hover:bg-black text-slate-300 disabled:opacity-30"
                           title="Move clip right"
                         >
                           <ChevronRight className="w-2.5 h-2.5" />
@@ -264,7 +264,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                             e.stopPropagation();
                             onUpdateClipDuration(clip.id, -0.5);
                           }}
-                          className="p-0.5 rounded bg-black/50 hover:bg-black text-slate-300"
+                          className="p-0.5 rounded bg-black/60 hover:bg-black text-slate-300"
                           title="Shorten (-0.5s)"
                         >
                           <Minus className="w-2 h-2" />
@@ -274,7 +274,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                             e.stopPropagation();
                             onUpdateClipDuration(clip.id, 0.5);
                           }}
-                          className="p-0.5 rounded bg-black/50 hover:bg-black text-slate-300"
+                          className="p-0.5 rounded bg-black/60 hover:bg-black text-slate-300"
                           title="Extend (+0.5s)"
                         >
                           <Plus className="w-2 h-2" />
@@ -304,7 +304,7 @@ export const Timeline: React.FC<TimelineProps> = ({
             </div>
           </div>
 
-          {/* TRACK 3: AUDIO SOUNDTRACK */}
+          {/* TRACK 3: AUDIO SOUNDTRACK (h-7) */}
           {audioTrack ? (
             <div
               onClick={(e) => {
@@ -335,7 +335,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                 e.stopPropagation();
                 if (onOpenAudioModal) onOpenAudioModal();
               }}
-              className="h-7 relative flex items-center bg-slate-900/40 rounded-lg border border-dashed border-slate-700/60 px-3 cursor-pointer hover:border-pink-500/60 transition"
+              className="h-7 relative flex items-center bg-[#181818] rounded-lg border border-dashed border-[#2A2A2A] px-3 cursor-pointer hover:border-pink-500/60 transition"
             >
               <Music className="w-3 h-3 text-slate-500 mr-2" />
               <span className="text-[11px] text-slate-400 hover:text-pink-400 font-medium">
@@ -345,6 +345,8 @@ export const Timeline: React.FC<TimelineProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </footer>
   );
 };
+
+export default Timeline;

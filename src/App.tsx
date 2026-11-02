@@ -12,17 +12,16 @@ import {
 } from './types';
 import {
   getInitialProject,
-  generateCanvasPattern,
-  createSynthAudioWav,
   autoSyncClipsToBpm,
 } from './utils/sampleData';
 import { getTotalDuration } from './utils/engine';
 import { exportReel, ExportProgress } from './utils/exporter';
 import { Header } from './components/Header';
-import { MediaLibrary } from './components/MediaLibrary';
+import { ToolRail, ToolType } from './components/ToolRail';
+import { AssetDrawer } from './components/AssetDrawer';
 import { PhonePreview } from './components/PhonePreview';
 import { Timeline } from './components/Timeline';
-import { StudioSidePanel } from './components/StudioSidePanel';
+import { Inspector } from './components/Inspector';
 import { ExportModal } from './components/ExportModal';
 import { AudioModal } from './components/AudioModal';
 import { OverlayModal } from './components/OverlayModal';
@@ -44,9 +43,9 @@ export const App: React.FC = () => {
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
 
-  // Collapse / Minimize states
-  const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState<boolean>(false);
-  const [isMediaLibraryCollapsed, setIsMediaLibraryCollapsed] = useState<boolean>(false);
+  // New Drawer & Inspector states
+  const [activeTool, setActiveTool] = useState<ToolType | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(true);
 
   // Modal dialog states
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
@@ -213,6 +212,11 @@ export const App: React.FC = () => {
     updateProject((prev) => ({ ...prev, globalOverlay: overlay }));
   };
 
+  // Toggle active tool in left ToolRail
+  const handleToolChange = (tool: ToolType) => {
+    setActiveTool((prev) => (prev === tool ? null : tool));
+  };
+
   // One-Click Auto Beat-Sync
   const handleAutoSyncBeat = () => {
     const bpm = project.audioTrack?.bpm || 128;
@@ -262,11 +266,7 @@ export const App: React.FC = () => {
     setSelectedTextId(newText.id);
     setSelectedClipId(null);
     setSelectedStickerId(null);
-    setIsSidePanelCollapsed(false);
-  };
-
-  const handleAddText = () => {
-    handleAddCaption('NEW CAPTION ✨', 'pop');
+    setIsInspectorOpen(true);
   };
 
   // Add sticker hook
@@ -288,7 +288,7 @@ export const App: React.FC = () => {
     setSelectedStickerId(newSticker.id);
     setSelectedClipId(null);
     setSelectedTextId(null);
-    setIsSidePanelCollapsed(false);
+    setIsInspectorOpen(true);
   };
 
   // Drag text position callback
@@ -338,6 +338,7 @@ export const App: React.FC = () => {
       stickerOverlays: [...(prev.stickerOverlays || []), dup],
     }));
     setSelectedStickerId(dup.id);
+    setIsInspectorOpen(true);
   };
 
   // Delete sticker
@@ -368,7 +369,7 @@ export const App: React.FC = () => {
     setSelectedClipId(newClip.id);
     setSelectedTextId(null);
     setSelectedStickerId(null);
-    setIsSidePanelCollapsed(false);
+    setIsInspectorOpen(true);
   };
 
   // Move clip left or right
@@ -438,6 +439,7 @@ export const App: React.FC = () => {
       clips: [...prev.clips, dup],
     }));
     setSelectedClipId(dup.id);
+    setIsInspectorOpen(true);
   };
 
   // Update text properties
@@ -461,6 +463,7 @@ export const App: React.FC = () => {
       textOverlays: [...prev.textOverlays, dup],
     }));
     setSelectedTextId(dup.id);
+    setIsInspectorOpen(true);
   };
 
   // Background color / gradient editor
@@ -486,112 +489,6 @@ export const App: React.FC = () => {
       ...prev,
       audioTrack: prev.audioTrack ? { ...prev.audioTrack, volume: vol } : null,
     }));
-  };
-
-  // Load preset templates
-  const handleLoadTemplate = (templateName: string) => {
-    if (templateName === 'photodump') {
-      const p1 = generateCanvasPattern('sunset');
-      const p2 = generateCanvasPattern('cyberpunk');
-      const p3 = generateCanvasPattern('nature');
-      const p4 = generateCanvasPattern('urban');
-      const p5 = generateCanvasPattern('abstract');
-      const audio = createSynthAudioWav('upbeat', 15);
-
-      updateProject({
-        id: 'proj-photodump',
-        title: '2026 Camera Roll Dump',
-        aspectRatio: '9:16',
-        fps: 30,
-        globalOverlay: 'light-leak',
-        backgroundColor: '#0A0D14',
-        clips: [
-          { id: 'pd-1', type: 'photo', title: 'Sunset Shot', src: p1, thumbnail: p1, duration: 0.94, transition: 'flash', filter: 'warm', fit: 'cover', motion: 'zoom-in', volume: 1, speed: 1 },
-          { id: 'pd-2', type: 'photo', title: 'Neon Night', src: p2, thumbnail: p2, duration: 0.94, transition: 'flash', filter: 'cyberpunk', fit: 'cover', motion: 'zoom-out', volume: 1, speed: 1 },
-          { id: 'pd-3', type: 'photo', title: 'Forest Calm', src: p3, thumbnail: p3, duration: 0.94, transition: 'flash', filter: 'vibrant', fit: 'cover', motion: 'pan-right', volume: 1, speed: 1 },
-          { id: 'pd-4', type: 'photo', title: 'City Walk', src: p4, thumbnail: p4, duration: 0.94, transition: 'flash', filter: 'dramatic', fit: 'cover', motion: 'zoom-in', volume: 1, speed: 1 },
-          { id: 'pd-5', type: 'photo', title: 'Festival Vibe', src: p5, thumbnail: p5, duration: 0.94, transition: 'crossfade', filter: 'normal', fit: 'cover', motion: 'zoom-out', volume: 1, speed: 1 },
-        ],
-        textOverlays: [
-          {
-            id: 'pt-1',
-            text: 'CAMERA ROLL DUMP 📸',
-            startTime: 0.2,
-            duration: 2.5,
-            x: 50,
-            y: 35,
-            fontSize: 36,
-            fontFamily: 'Outfit',
-            color: '#FFFFFF',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            animation: 'pop',
-            align: 'center',
-            bold: true,
-          },
-        ],
-        stickerOverlays: [
-          { id: 'ps-1', emoji: '🔥', x: 80, y: 35, size: 68, rotation: 12 },
-        ],
-        audioTrack: {
-          id: 'audio-upbeat',
-          title: 'Upbeat Electro Beat',
-          src: audio,
-          duration: 15,
-          volume: 0.85,
-          genre: 'Electronic',
-          bpm: 128,
-        },
-      });
-    } else if (templateName === 'filmvlog') {
-      const p1 = generateCanvasPattern('sunset');
-      const p2 = generateCanvasPattern('nature');
-      const audio = createSynthAudioWav('lofi', 15);
-
-      updateProject({
-        id: 'proj-film',
-        title: '35mm Film Vlog',
-        aspectRatio: '9:16',
-        fps: 30,
-        globalOverlay: 'vhs',
-        backgroundColor: '#0A0D14',
-        clips: [
-          { id: 'f-1', type: 'photo', title: 'Analog Golden Hour', src: p1, thumbnail: p1, duration: 4.0, transition: 'crossfade', filter: 'vintage', fit: 'cover', motion: 'zoom-in', volume: 1, speed: 1 },
-          { id: 'f-2', type: 'photo', title: 'Coastal Breeze', src: p2, thumbnail: p2, duration: 4.0, transition: 'fade-black', filter: 'warm', fit: 'cover', motion: 'zoom-out', volume: 1, speed: 1 },
-        ],
-        textOverlays: [
-          {
-            id: 'ft-1',
-            text: 'ROMANTICIZE YOUR LIFE 🕊️',
-            startTime: 0.5,
-            duration: 3.5,
-            x: 50,
-            y: 40,
-            fontSize: 32,
-            fontFamily: 'Playfair Display',
-            color: '#FFFFFF',
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            animation: 'fade',
-            align: 'center',
-            bold: true,
-          },
-        ],
-        stickerOverlays: [
-          { id: 'fs-1', emoji: '✨', x: 50, y: 25, size: 70, rotation: 0 },
-        ],
-        audioTrack: {
-          id: 'audio-lofi',
-          title: 'Chilled Lo-Fi Sunset',
-          src: audio,
-          duration: 15,
-          volume: 0.8,
-          genre: 'Lo-Fi',
-          bpm: 84,
-        },
-      });
-    }
-
-    setCurrentTime(0);
-    setIsPlaying(false);
   };
 
   // Export Reel Handlers
@@ -630,39 +527,42 @@ export const App: React.FC = () => {
   const selectedSticker = (project.stickerOverlays || []).find((s) => s.id === selectedStickerId) || null;
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0A0D14] text-slate-100 overflow-hidden font-sans">
-      {/* Top Header */}
+    <div
+      className="h-screen w-screen bg-[#0E0E0E] text-slate-100 overflow-hidden font-sans"
+      style={{ display: 'grid', gridTemplateRows: '48px 1fr 208px', gridTemplateColumns: '1fr' }}
+    >
+      {/* Row 1: Header */}
       <Header
         aspectRatio={project.aspectRatio}
         onAspectRatioChange={handleAspectRatioChange}
-        onAddText={handleAddText}
         onExport={handleOpenExportModal}
-        onLoadTemplate={handleLoadTemplate}
-        onAutoSyncBeat={handleAutoSyncBeat}
-        onOpenAudioModal={() => setIsAudioModalOpen(true)}
-        onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
-        globalOverlay={project.globalOverlay}
-        totalDuration={totalDuration}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={history.length > 0}
         canRedo={future.length > 0}
+        totalDuration={totalDuration}
       />
 
-      {/* Main Center Area: Phone Preview Directly Visible with Full Space */}
-      <div className="flex-1 min-h-0 flex overflow-hidden relative">
-        {/* Left Side: Collapsible Media Library */}
-        <MediaLibrary
-          onAddClip={handleAddClip}
-          onSetAudio={handleSetAudio}
-          onAddCaption={handleAddCaption}
-          onAddSticker={handleAddSticker}
-          currentAudioId={project.audioTrack?.id}
-          isCollapsed={isMediaLibraryCollapsed}
-          onToggleCollapse={() => setIsMediaLibraryCollapsed((prev) => !prev)}
-        />
+      {/* Row 2: Main work area */}
+      <div className="flex min-h-0 overflow-hidden">
+        {/* Left: Tool Rail + Drawer */}
+        <ToolRail activeTool={activeTool} onToolChange={handleToolChange} />
+        {activeTool && (
+          <AssetDrawer
+            activeTool={activeTool}
+            isOpen={true}
+            onClose={() => setActiveTool(null)}
+            onAddClip={handleAddClip}
+            onSetAudio={handleSetAudio}
+            onAddCaption={handleAddCaption}
+            onAddSticker={handleAddSticker}
+            onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
+            onOpenAudioModal={() => setIsAudioModalOpen(true)}
+            currentAudioId={project.audioTrack?.id}
+          />
+        )}
 
-        {/* Center: Live Phone Preview Canvas (Directly Visible, Centered, No Overlaps) */}
+        {/* Center: Phone Preview */}
         <PhonePreview
           project={project}
           currentTime={currentTime}
@@ -678,59 +578,20 @@ export const App: React.FC = () => {
             setSelectedTextId(text.id);
             setSelectedClipId(null);
             setSelectedStickerId(null);
-            setIsSidePanelCollapsed(false);
+            setIsInspectorOpen(true);
           }}
           onUpdateTextPosition={handleUpdateTextPosition}
           onSelectSticker={(sticker) => {
             setSelectedStickerId(sticker.id);
             setSelectedClipId(null);
             setSelectedTextId(null);
-            setIsSidePanelCollapsed(false);
+            setIsInspectorOpen(true);
           }}
           onUpdateStickerPosition={handleUpdateStickerPosition}
         />
-      </div>
 
-      {/* Bottom Deck: Timeline (Left/Main) + Video Studio Options (Down and On Side) */}
-      <div className="h-48 border-t border-slate-800 bg-[#0B0F17] flex shrink-0 z-20">
-        {/* Left/Main: Multi-Track Timeline */}
-        <div className="flex-1 h-full min-w-0">
-          <Timeline
-            clips={project.clips}
-            textOverlays={project.textOverlays}
-            audioTrack={project.audioTrack}
-            currentTime={currentTime}
-            totalDuration={totalDuration}
-            onSeek={handleSeek}
-            selectedClipId={selectedClipId}
-            onSelectClip={(id) => {
-              setSelectedClipId(id);
-              if (id) {
-                setSelectedTextId(null);
-                setSelectedStickerId(null);
-                setIsSidePanelCollapsed(false);
-              }
-            }}
-            selectedTextId={selectedTextId}
-            onSelectText={(id) => {
-              setSelectedTextId(id);
-              if (id) {
-                setSelectedClipId(null);
-                setSelectedStickerId(null);
-                setIsSidePanelCollapsed(false);
-              }
-            }}
-            onMoveClip={handleMoveClip}
-            onUpdateClipDuration={handleUpdateClipDuration}
-            onDeleteClip={handleDeleteClip}
-            onDeleteText={handleDeleteText}
-            onOpenAudioModal={() => setIsAudioModalOpen(true)}
-            onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
-          />
-        </div>
-
-        {/* Down and On Side: Video Studio Options Bar */}
-        <StudioSidePanel
+        {/* Right: Inspector */}
+        <Inspector
           selectedClip={selectedClip}
           selectedText={selectedText}
           selectedSticker={selectedSticker}
@@ -749,8 +610,6 @@ export const App: React.FC = () => {
             setSelectedTextId(null);
             setSelectedStickerId(null);
           }}
-          isCollapsed={isSidePanelCollapsed}
-          onToggleCollapse={() => setIsSidePanelCollapsed((prev) => !prev)}
           onOpenAudioModal={() => setIsAudioModalOpen(true)}
           onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
           onAutoSyncBeat={handleAutoSyncBeat}
@@ -759,6 +618,44 @@ export const App: React.FC = () => {
           backgroundColor={project.backgroundColor}
           backgroundGradient={project.backgroundGradient}
           onUpdateBackground={handleUpdateBackground}
+          isCollapsed={!isInspectorOpen}
+          onToggleCollapse={() => setIsInspectorOpen((prev) => !prev)}
+        />
+      </div>
+
+      {/* Row 3: Full-width Timeline */}
+      <div className="border-t border-[#2A2A2A] h-[208px] overflow-hidden">
+        <Timeline
+          clips={project.clips}
+          textOverlays={project.textOverlays}
+          audioTrack={project.audioTrack}
+          currentTime={currentTime}
+          totalDuration={totalDuration}
+          onSeek={handleSeek}
+          selectedClipId={selectedClipId}
+          onSelectClip={(id) => {
+            setSelectedClipId(id);
+            if (id) {
+              setSelectedTextId(null);
+              setSelectedStickerId(null);
+              setIsInspectorOpen(true);
+            }
+          }}
+          selectedTextId={selectedTextId}
+          onSelectText={(id) => {
+            setSelectedTextId(id);
+            if (id) {
+              setSelectedClipId(null);
+              setSelectedStickerId(null);
+              setIsInspectorOpen(true);
+            }
+          }}
+          onMoveClip={handleMoveClip}
+          onUpdateClipDuration={handleUpdateClipDuration}
+          onDeleteClip={handleDeleteClip}
+          onDeleteText={handleDeleteText}
+          onOpenAudioModal={() => setIsAudioModalOpen(true)}
+          onOpenOverlayModal={() => setIsOverlayModalOpen(true)}
         />
       </div>
 
@@ -790,4 +687,5 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
 export default App;
